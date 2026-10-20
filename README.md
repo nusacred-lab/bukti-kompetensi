@@ -1,18 +1,23 @@
-# Bukti Kompetensi Digital
+# Digital Competency Proof
 
-Demo bukti kompetensi untuk lamaran teknisi instalasi listrik dengan data sintetis.
-Issuer, wallet custodial dan verifier memakai mesin protokol walt.id yang nyata.
-Target: APK Android custodial, portal Compose Web/Wasm, backend Kotlin/Ktor/JDK 21,
-Keycloak/PostgreSQL dan Exposed/SQLite. Holder key serta credential tetap di server.
+A synthetic-data demo of competency proof for an electrical installation
+technician application. The issuer, custodial wallet, and verifier use the real
+walt.id protocol engine. Target stack: custodial Android APK, Compose Web/Wasm
+portals, Kotlin/Ktor/JDK 21 backend, Keycloak/PostgreSQL, and Exposed/SQLite.
+Holder keys and credentials remain on the server.
 
-Status P1: fondasi repo dan CI; aplikasi rilis belum dibangun. Ini belum quickstart
-aplikasi yang dapat dipakai. Build fork dan supply-chain acceptance dilacak pada
-repo [waltid-identity](https://github.com/nusacred-lab/waltid-identity).
+P1 status: repository and CI foundations; the release application has not been
+built. This is not yet a runnable application quickstart. Fork builds and
+supply-chain acceptance are tracked in
+[waltid-identity](https://github.com/nusacred-lab/waltid-identity).
 
-Satu issuer, satu perusahaan, satu lowongan dan data sintetis; CV, rekrutmen lengkap,
-credential revocation dan banyak issuer/perusahaan di luar scope awal.
-Infra demo satu VM, backup eksternal dan restore teruji diperlukan sebelum dibuka.
+Initial scope: one issuer, one company, one job opening, and synthetic data.
+CVs, full recruitment, credential revocation, and multiple issuers/companies are
+out of scope. A single demo VM, external backups, and tested restoration are
+required before opening the demo.
 
-Pemeriksaan lokal: `python3 ci/check_policy.py`. CI menambah pemindaian seluruh
-riwayat Git dan dependency review pada PR. Lihat SECURITY-PROJECT.md.
-Kode proyek: Apache-2.0 (LICENSE). Tidak ada afiliasi resmi dengan walt.id.
+Local check: `python3 ci/check_policy.py`. CI also scans the full Git history
+and reviews dependency changes on pull requests. See SECURITY-PROJECT.md.
+Project code: Apache-2.0 (LICENSE). No official affiliation with walt.id.
+
+All repository work must use English; see [AGENTS.md](AGENTS.md).
