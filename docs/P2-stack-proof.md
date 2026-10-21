@@ -1,8 +1,9 @@
 # P2 stack proof — 21 October 2026
 
 Owner: repository maintainer, assisted by Codex. This is a technical proof branch.
-G2 remains open. The original assignment brief was not found in the local project;
-the existing requirements mapping is provisional and cannot establish A29.
+G2 remains open. The owner has now clarified the deployment/APK/recovery requirements directly;
+see [P2.0 clarification R1](P2-requirements.md). Other handover requirements are
+deferred until the use-case components work.
 
 ## Built and exercised
 
@@ -80,3 +81,24 @@ P2.3–P2.9 remain open: native PKCE and web BFF validation, stable identity-to-
 mapping, persistent recovery gate/SPI, revocation and concurrency/failure tests,
 old-credential presentation and candidate APK scanner/App Links. This branch
 neither opens credential services to public ingress nor changes G1 containment.
+
+## Container follow-up
+
+`deploy/Containerfile.custodian` packages the verified JVM distribution and built
+portal assets together using the accepted fork's digest-pinned JRE base. The
+image runs as UID/GID 10001 and accepts `HTTP_HOST`, `HTTP_PORT` and `PORTAL_ROOT`;
+without these settings the local diagnostic default remains loopback. Invalid
+ports or a missing configured asset directory fail startup. Only compiled assets
+are added to the image using a whitelist Docker build context.
+
+After the strict distribution build, build the image from this repository:
+
+```sh
+docker build -f deploy/Containerfile.custodian --build-arg SOURCE_REVISION="$(git rev-parse HEAD)" -t competency-proof-p2-custodian:0.2.0 .
+```
+
+Run it with `p2/application.compose.yaml` in `nusacred-lab/platform-infra`, after
+scanning and recording its immutable image ID. `python3 ci/check_container_probe.py`
+checks the real loopback endpoint, compares served HTML/JS/Wasm to the built asset
+bytes and rejects exposed unimplemented or private paths. This replaces host-run
+probe servers for application testing. Android remains native on the phone.
