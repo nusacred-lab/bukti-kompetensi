@@ -3,15 +3,16 @@
 A synthetic-data demo of competency proof for an electrical installation
 technician application. The issuer, custodial wallet, and verifier use the real
 walt.id protocol engine. Target stack: custodial Android APK, Compose Web/Wasm
-portals, Kotlin/Ktor/JDK 21 backend, Keycloak/PostgreSQL, and Exposed/SQLite.
+portals, Kotlin/Ktor/JDK 21 backend, Keycloak/PostgreSQL, and JDBC/SQLite.
 Holder keys and credentials remain on the server.
 
-P2 implementation has started. The repository now builds a minimal Ktor backend,
-Android debug wallet and Compose Web/Wasm portal. The custodian now has real OIDC BFF and native PKCE session verification;
-credential operations and coordinated recovery are not implemented yet.
-See [P2 login proof](docs/P2-login-proof.md) for the passed private login tests
-and the remaining physical-device/prerelease checks. See
-[the P2 proof and reproduction steps](docs/P2-stack-proof.md). G2 remains open.
+P2 now includes three role-separated OIDC BFFs, native AppAuth/PKCE, a persistent
+account-to-wallet registry and guarded password recovery. Private real-service
+proofs cover revocation, concurrency, interrupted recovery, retained credentials
+and actual verifier acceptance. A signed Android candidate includes QR scanning
+and verified App Links. Physical credential/recovery journeys remain to be closed;
+G2 is still open. See [persistent recovery proof](docs/P2-recovery-proof.md),
+[login evidence](docs/P2-login-proof.md) and [initial stack proof](docs/P2-stack-proof.md).
 Fork supply-chain acceptance is tracked in
 [waltid-identity](https://github.com/nusacred-lab/waltid-identity).
 
@@ -24,14 +25,12 @@ the demo. Cloud VM procurement is not a prerequisite.
 
 Environment update, 21 October 2026: public HTTPS probes under
 `{issuer,wallet,auth,verifier}.demo.inoerawan.id` passed and the owner confirmed
-phone access. This foundation is sufficient to start P2; the APK, Keycloak,
-recovery and full application acceptance remain unimplemented/unproven. Prerelease
-application tests will use separate `*-p2.demo.inoerawan.id` routing and independent
-realm/key/database state. Host availability, tunnel lifecycle, monitoring and
-manual certificate renewal must be operated before final-demo opening.
-The environment runbook is maintained as `docs/local-demo.md` in
-`nusacred-lab/platform-infra`. The private Keycloak/PostgreSQL/SMTP proof is documented in
-`docs/P2-identity-proof.md` in that repository; public routing remains closed.
+phone access. P2 uses separate prerelease routing, realm, keys and databases.
+Public prerelease login and the Android certificate association are active;
+credential/recovery route expansion is staged for separate approval. Host
+availability, tunnel lifecycle, monitoring, certificate renewal and off-host
+backup remain final-demo requirements. The companion `nusacred-lab/platform-infra`
+repository maintains `docs/local-demo.md` and `docs/P2-recovery-proof.md`.
 
 Local check: `python3 ci/check_policy.py`. CI also scans the full Git history
 and reviews dependency changes on pull requests. See SECURITY-PROJECT.md.

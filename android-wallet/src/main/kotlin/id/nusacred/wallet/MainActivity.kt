@@ -3,11 +3,16 @@ package id.nusacred.wallet
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.content.Intent
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -15,6 +20,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +50,13 @@ class MainActivity : ComponentActivity() {
     private var message by mutableStateOf("Sign in to your account.")
     private var busy by mutableStateOf(false)
     private var signedIn by mutableStateOf(false)
+    private var scanning by mutableStateOf(false)
+    private var pendingLink by mutableStateOf<String?>(null)
+    private var preview by mutableStateOf<JSONObject?>(null)
+    private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        scanning = granted
+        if (!granted) message = "Camera permission is needed to scan a QR code. You can also open a wallet link."
+    }
     private val login = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val data = result.data
         val response = data?.let(AuthorizationResponse::fromIntent)
@@ -68,12 +82,23 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         authorization = AuthorizationService(this)
         store = SessionStore(this)
+        pendingLink = store.context()
+        intent?.data?.let { receiveLink(it.toString()) }
         // A lost in-flight transaction is cancelled rather than reconstructed without its nonce/state.
         setContent {
             Column(Modifier.fillMaxSize().background(Color.White)
-                .windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp), Arrangement.spacedBy(20.dp)) {
+                .windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(24.dp), Arrangement.spacedBy(20.dp)) {
                 BasicText("Competency Wallet", style = TextStyle(color = Color.Black, fontSize = 24.sp))
                 BasicText(message, style = TextStyle(color = Color.Black, fontSize = 16.sp))
+                if (scanning) {
+                    QrScanner(this@MainActivity, this@MainActivity, Modifier.fillMaxWidth().height(280.dp),
+                        onCode = { scanning = false; receiveLink(it) },
+                        onError = { scanning = false; message = "The camera is unavailable. Please open a wallet link." })
+                    BasicText("Cancel scanning", Modifier.clickable { scanning = false }.padding(12.dp))
+                } else BasicText("Scan QR code", Modifier.clickable(enabled = !busy) {
+                    if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) scanning = true
+                    else cameraPermission.launch(Manifest.permission.CAMERA)
+                }.padding(12.dp), style = TextStyle(color = Color(0xFF1645A0), fontSize = 18.sp))
                 BasicText(if (busy) "Please wait…" else if (signedIn) "Check account" else "Sign in",
                     Modifier.clickable(enabled = !busy) {
                         if (signedIn) submit { account(store.load() ?: error("Missing session")) } else begin()
@@ -81,11 +106,50 @@ class MainActivity : ComponentActivity() {
                 if (signedIn) BasicText("Sign out", Modifier.clickable(enabled = !busy) {
                     submit {
                         try { request("/auth/logout", "POST", JSONObject(), store.load()) } finally { store.clear() }
-                        runOnUiThread { signedIn = false; message = "You are signed out." }
+                        runOnUiThread { signedIn = false; pendingLink = null; preview = null; message = "You are signed out." }
                     }
                 }.padding(12.dp), style = TextStyle(color = Color(0xFF1645A0), fontSize = 18.sp))
-                BasicText("Credential features will become available after access and recovery checks are complete.",
-                    style = TextStyle(color = Color.DarkGray, fontSize = 14.sp))
+                if (pendingLink != null) {
+                    BasicText(if (signedIn) "A presentation link is ready to review." else "A presentation link is saved. Sign in to review it.")
+                    if (signedIn && preview == null) BasicText("Review request", Modifier.clickable(enabled = !busy) {
+                        val link = pendingLink ?: return@clickable
+                        submit {
+                            val session = store.load() ?: error("Missing session")
+                            check(store.context() == link)
+                            request("/api/v1/wallet/provision", "POST", JSONObject(), session)
+                            val response = request("/api/v1/wallet/preview", "POST", JSONObject().put("request_url",
+                                Uri.parse(link).getQueryParameter("request_url")), session)
+                            runOnUiThread { preview = response; message = "Review the selected credential before sending." }
+                        }
+                    }.padding(12.dp), style = TextStyle(color = Color(0xFF1645A0), fontSize = 18.sp))
+                    preview?.let { current ->
+                        val details = current.getJSONObject("details")
+                        BasicText("Credential: ${details.optString("credential_label", "Competency Proof")}")
+                        BasicText("Recipient: ${details.optString("recipient")}")
+                        BasicText("Issuer: ${details.optString("issuer")}")
+                        val disclosures = details.getJSONArray("disclosures")
+                        for (index in 0 until disclosures.length()) {
+                            val claim = disclosures.getJSONObject(index)
+                            BasicText("${claim.optString("name").takeIf { it.isNotBlank() && it != "null" } ?: claim.optString("path")}: ${claim.opt("value")}")
+                        }
+                        BasicText("Send this credential", Modifier.clickable(enabled = !busy) {
+                            val link = pendingLink ?: return@clickable
+                            submit {
+                                check(store.context() == link)
+                                check(current.getLong("expires_at") > System.currentTimeMillis() / 1000)
+                                val response = request("/api/v1/wallet/present", "POST", JSONObject()
+                                    .put("context_id", current.getString("context_id"))
+                                    .put("summary_hash", current.getString("summary_hash")).put("consent", true), store.load())
+                                check(response.getBoolean("transmission_success"))
+                                store.clearContext()
+                                runOnUiThread { preview = null; pendingLink = null; message = "Your credential was sent." }
+                            }
+                        }.padding(12.dp), style = TextStyle(color = Color(0xFF1645A0), fontSize = 18.sp))
+                    }
+                    BasicText("Decline request", Modifier.clickable(enabled = !busy) {
+                        store.clearContext(); pendingLink = null; preview = null; message = "The request was declined."
+                    }.padding(12.dp))
+                }
             }
         }
         store.load()?.let { submit { account(it) } }
@@ -94,8 +158,8 @@ class MainActivity : ComponentActivity() {
         busy = true
         network.execute {
             try { work() } catch (_: Exception) {
-                store.clear()
-                runOnUiThread { busy = false; signedIn = false; message = "Your account could not be verified. Please sign in again." }
+                store.clearSession()
+                runOnUiThread { busy = false; signedIn = false; preview = null; message = "Your account could not be verified. Please sign in again." }
             } finally { if (releaseBusy) runOnUiThread { busy = false } }
         }
     }
@@ -125,8 +189,31 @@ class MainActivity : ComponentActivity() {
         val user = request("/auth/me", "GET", null, session)
         runOnUiThread { signedIn = true; message = "Signed in as ${user.getString("email")}." }
     }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent.data?.let { receiveLink(it.toString()) }
+    }
+    override fun onResume() {
+        super.onResume()
+        if (::store.isInitialized) {
+            val context = store.context()
+            if (context != pendingLink) { pendingLink = context; preview = null }
+        }
+    }
+    private fun receiveLink(value: String) {
+        try {
+            val uri = Uri.parse(value)
+            check(value.length <= 8192 && uri.scheme == "https" && uri.authority == "wallet-p2.demo.inoerawan.id" &&
+                uri.path == "/present" && uri.fragment == null && uri.queryParameterNames == setOf("request_url") &&
+                uri.getQueryParameters("request_url").size == 1)
+            check(!uri.getQueryParameter("request_url").isNullOrBlank())
+            store.saveContext(value); pendingLink = value; preview = null
+            message = "Presentation link received. Review it before sending."
+        } catch (_: Exception) { message = "This QR code is not a supported wallet link." }
+    }
     private fun request(path: String, method: String, body: JSONObject?, session: String? = null): JSONObject {
-        check(path in setOf("/auth/native/start", "/auth/native/session", "/auth/me", "/auth/logout"))
+        check(path in setOf("/auth/native/start", "/auth/native/session", "/auth/me", "/auth/logout",
+            "/api/v1/wallet/provision", "/api/v1/wallet/preview", "/api/v1/wallet/present"))
         val connection = URL(BuildConfig.WALLET_ORIGIN + path).openConnection() as HttpURLConnection
         try {
             connection.requestMethod = method

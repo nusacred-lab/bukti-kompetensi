@@ -10,7 +10,7 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-/** Only the opaque application session is persisted; IdP tokens remain ephemeral. */
+/** Only opaque session and expiring link context persist; IdP tokens remain ephemeral. */
 class SessionStore(context: Context) {
     private val prefs = context.getSharedPreferences("private-session", Context.MODE_PRIVATE)
     private fun key(): SecretKey {
@@ -23,19 +23,34 @@ class SessionStore(context: Context) {
                 .setKeySize(256).setRandomizedEncryptionRequired(true).build())
         }.generateKey()
     }
-    fun save(value: String) {
+    private fun saveRecord(name: String, value: String) {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, key()) }
+        cipher.updateAAD(name.toByteArray(Charsets.UTF_8))
         val record = cipher.iv + cipher.doFinal(value.toByteArray(Charsets.UTF_8))
-        check(prefs.edit().putString("session", Base64.encodeToString(record, Base64.NO_WRAP)).commit())
+        check(prefs.edit().putString(name, Base64.encodeToString(record, Base64.NO_WRAP)).commit())
     }
-    fun load(): String? = try {
-        prefs.getString("session", null)?.let {
+    private fun loadRecord(name: String): String? = try {
+        prefs.getString(name, null)?.let {
             val bytes = Base64.decode(it, Base64.NO_WRAP)
             val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
                 init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, bytes.copyOfRange(0, 12)))
             }
+            cipher.updateAAD(name.toByteArray(Charsets.UTF_8))
             String(cipher.doFinal(bytes.copyOfRange(12, bytes.size)), Charsets.UTF_8)
         }
-    } catch (_: Exception) { clear(); null }
+    } catch (_: Exception) { prefs.edit().remove(name).commit(); null }
+    fun save(value: String) = saveRecord("session", value)
+    fun load(): String? = loadRecord("session")
+    fun clearSession() { prefs.edit().remove("session").commit() }
+    fun saveContext(link: String) = saveRecord("context", org.json.JSONObject().put("link", link)
+        .put("expires", System.currentTimeMillis() + 240_000).toString())
+    fun context(): String? = try {
+        loadRecord("context")?.let {
+            val record = org.json.JSONObject(it)
+            if (record.getLong("expires") > System.currentTimeMillis()) record.getString("link")
+            else { clearContext(); null }
+        }
+    } catch (_: Exception) { clearContext(); null }
+    fun clearContext() { prefs.edit().remove("context").commit() }
     fun clear() { prefs.edit().clear().commit() }
 }

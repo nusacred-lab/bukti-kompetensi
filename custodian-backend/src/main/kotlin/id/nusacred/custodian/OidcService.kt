@@ -51,13 +51,19 @@ data class OidcConfig(
         require(URI(backchannelOrigin).host == URI(issuer).host)
         require(URI(backchannelOrigin).path.isEmpty() && URI(portalOrigin).path.isEmpty())
         require(clientSecret.length >= 32)
+        require(clientId in setOf("custodian-bff-p2", "issuer-bff-p2", "company-bff-p2"))
     }
     val callback: String get() = "$portalOrigin/auth/callback"
+    val browserRole: String get() = when (clientId) {
+        "issuer-bff-p2" -> "issuer-admin"
+        "company-bff-p2" -> "company-admin"
+        else -> "custodian-admin"
+    }
     companion object {
         fun fromEnvironment(): OidcConfig? {
             val issuer = System.getenv("OIDC_ISSUER") ?: return null
             return OidcConfig(issuer, requireNotNull(System.getenv("OIDC_BACKCHANNEL_ORIGIN")),
-                requireNotNull(System.getenv("OIDC_PORTAL_ORIGIN")), "custodian-bff-p2",
+                requireNotNull(System.getenv("OIDC_PORTAL_ORIGIN")), System.getenv("OIDC_CLIENT_ID") ?: "custodian-bff-p2",
                 Files.readString(Path.of(requireNotNull(System.getenv("OIDC_CLIENT_SECRET_FILE")))).trim())
         }
     }
@@ -67,8 +73,8 @@ data class LoginFlow(val nonce: String, val verifier: String, val binding: Strin
 data class AppSession(val subject: String, val sid: String, val email: String, val accessToken: String,
                       val expires: Instant, val channel: String, val csrf: String)
 
-/** P2 login sessions only: wallet operations remain unavailable until the recovery registry exists. */
-class OidcService(val config: OidcConfig) {
+/** IdP tokens stay memory-only; the registry enforces persistent recovery revisions. */
+class OidcService(val config: OidcConfig, private val registry: AccessRegistry? = null) {
     private val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))
         .followRedirects(HttpClient.Redirect.NEVER).build()
     private val nativeFlows = ConcurrentHashMap<String, LoginFlow>()
@@ -133,6 +139,7 @@ class OidcService(val config: OidcConfig) {
         sessions.entries.removeIf { !it.value.expires.isAfter(now) }
     }
     @Synchronized fun startNative(): Map<String, Any?> {
+        if (config.clientId != "custodian-bff-p2") throw AuthRejected()
         prune()
         if (nativeFlows.size + browserFlows.size >= 256 || sessions.size >= 512) throw AuthRejected()
         val ticket = randomToken()
@@ -186,8 +193,8 @@ class OidcService(val config: OidcConfig) {
             (id.getStringClaim("azp")?.let { it != clientId } == true ||
                 (id.audience.size > 1 && id.getStringClaim("azp") != clientId))) throw AuthRejected()
         val authTime = id.getDateClaim("auth_time") ?: throw AuthRejected()
-        if (authTime.toInstant().isBefore(started.minusSeconds(30)) || authTime.toInstant().isAfter(Instant.now().plusSeconds(30))) throw AuthRejected()
-        val requiredRole = if (channel == "native") "applicant" else "custodian-admin"
+        if (authTime.toInstant().isBefore(started.minusSeconds(30)) || authTime.toInstant().isAfter(Instant.now())) throw AuthRejected()
+        val requiredRole = if (channel == "native") "applicant" else config.browserRole
         val roles = token.getJSONObjectClaim("realm_access")?.get("roles") as? List<*>
         if (roles?.contains(requiredRole) != true) throw AuthRejected()
         val atHash = id.getStringClaim("at_hash")
@@ -200,6 +207,8 @@ class OidcService(val config: OidcConfig) {
             channel, randomToken())
         val opaque = randomToken()
         if (sessions.size >= 512) throw AuthRejected()
+        registry?.registerSession(config.issuer, token.subject, hash(opaque), sid,
+            authTime.toInstant().epochSecond, session.expires.epochSecond)
         sessions[hash(opaque)] = session
         return opaque
     }
@@ -213,7 +222,8 @@ class OidcService(val config: OidcConfig) {
         try { active(value.accessToken, value.subject, value.sid) } catch (e: Exception) {
             sessions.remove(key); throw AuthRejected()
         }
+        registry?.authorize(key)
         return value
     }
-    fun logout(opaque: String) { sessions.remove(hash(opaque)) }
+    fun logout(opaque: String) { registry?.revoke(hash(opaque)); sessions.remove(hash(opaque)) }
 }

@@ -15,9 +15,17 @@ android {
         manifestPlaceholders["appAuthRedirectScheme"] = "id.nusacred.wallet"
         buildConfigField("String", "WALLET_ORIGIN", "\"https://wallet-p2.demo.inoerawan.id\"")
         buildConfigField("String", "OIDC_ISSUER", "\"https://auth-p2.demo.inoerawan.id/realms/competency-proof-p2\"")
-        buildConfigField("String", "OIDC_REDIRECT_URI", "\"id.nusacred.wallet:/oauth2redirect\"")
+        buildConfigField("String", "OIDC_REDIRECT_URI", "\"https://wallet-p2.demo.inoerawan.id/auth/android/callback\"")
+    }
+    val signingDirectory = providers.environmentVariable("P2_SIGNING_DIRECTORY").orNull?.let(::file)
+    if (signingDirectory != null) signingConfigs.create("p2Candidate") {
+        storeFile = signingDirectory.resolve("wallet-candidate.p12")
+        storePassword = signingDirectory.resolve("store-password").readText().trim()
+        keyPassword = storePassword
+        keyAlias = "wallet-candidate"
     }
     buildTypes {
+        release { if (signingDirectory != null) signingConfig = signingConfigs.getByName("p2Candidate") }
         debug {
             applicationIdSuffix = ".debug"
             manifestPlaceholders["appAuthRedirectScheme"] = "id.nusacred.wallet.debug"
@@ -31,6 +39,10 @@ android {
     }
 }
 dependencies {
+    implementation(libs.camera.camera2)
+    implementation(libs.camera.lifecycle)
+    implementation(libs.camera.view)
+    implementation(libs.zxing.core)
     implementation(libs.appauth)
     implementation(libs.androidx.activity.compose)
     implementation(libs.compose.foundation)

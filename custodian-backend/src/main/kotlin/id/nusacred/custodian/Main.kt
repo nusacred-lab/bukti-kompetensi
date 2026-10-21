@@ -28,9 +28,31 @@ fun main() {
         requireNotNull(it.toIntOrNull()?.takeIf { port -> port in 1..65535 }) { "Invalid HTTP_PORT" }
     } ?: 18080
     val portalRoot = System.getenv("PORTAL_ROOT")?.let(::File)
-    val auth = OidcConfig.fromEnvironment()?.let(::OidcService)
+    val registry = System.getenv("ACCESS_REGISTRY_PATH")?.let { AccessRegistry(java.nio.file.Path.of(it)) }
+    val auth = OidcConfig.fromEnvironment()?.let { config ->
+        // Discovery remains strict. Startup may wait for the identity container to become ready.
+        val deadline = System.nanoTime() + java.time.Duration.ofSeconds(90).toNanos()
+        var service: OidcService? = null
+        while (service == null) {
+            try { service = OidcService(config, registry) }
+            catch (e: Exception) {
+                if (System.nanoTime() >= deadline) throw IllegalStateException("Identity service did not become ready", e)
+                Thread.sleep(1000)
+            }
+        }
+        service
+    }
+    val wallet = System.getenv("WALLET_ORIGIN")?.let {
+        WalletService(requireNotNull(registry), WalletClient(it))
+    }
+    val recoverySecret = System.getenv("RECOVERY_SECRET_FILE")?.let {
+        java.nio.file.Files.readString(java.nio.file.Path.of(it)).trim().toByteArray(Charsets.US_ASCII)
+    }
     embeddedServer(Netty, host = host, port = port) {
+        if (registry != null && recoverySecret != null) recoveryRoutes(registry,
+            RecoveryAuthenticator(requireNotNull(System.getenv("OIDC_ISSUER")), recoverySecret))
         auth?.let { authRoutes(it) }
+        if (auth != null && wallet != null) walletRoutes(auth, wallet)
         stackProbe(portalRoot)
     }.start(wait = true)
 }

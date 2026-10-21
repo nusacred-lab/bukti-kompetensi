@@ -1,11 +1,13 @@
 # P2.3 login proof — 21 October 2026
 
-The custodian now implements browser BFF authorization-code + PKCE and the native
-AppAuth session-registration contract. Physical APK browser completion is now
-proven. This remains a partial P2.3 proof: the other two role-specific portal
-backends remain open.
-Wallet access is still unavailable until the persistent registry/recovery work
-passes. No credential success stub or default wallet identity is introduced.
+This document records the initial custodian BFF/native login increment and its
+physical **debug APK** proof. Subsequent work adds the other two role-specific
+BFFs, persistent registry, real credential operations and guarded recovery; see
+[current recovery proof](P2-recovery-proof.md). Older descriptions of in-memory
+state or unimplemented recovery below describe that earlier increment.
+
+The signed candidate has verified HTTPS App Links. Its physical credential,
+scanner and recovery journeys remain acceptance work; G2 is still open.
 
 ## Authentication boundary
 
