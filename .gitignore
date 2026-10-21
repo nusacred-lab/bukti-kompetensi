@@ -17,3 +17,6 @@ secrets/
 *.jks
 *.keystore
 __pycache__/
+
+local.properties
+.kotlin/

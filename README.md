@@ -6,9 +6,11 @@ walt.id protocol engine. Target stack: custodial Android APK, Compose Web/Wasm
 portals, Kotlin/Ktor/JDK 21 backend, Keycloak/PostgreSQL, and Exposed/SQLite.
 Holder keys and credentials remain on the server.
 
-P1 status: repository and CI foundations; the release application has not been
-built. This is not yet a runnable application quickstart. Fork builds and
-supply-chain acceptance are tracked in
+P2 implementation has started. The repository now builds a minimal Ktor backend,
+Android debug wallet and Compose Web/Wasm portal. These are stack probes; login,
+credential operations and coordinated recovery are not implemented yet. See
+[the P2 proof and reproduction steps](docs/P2-stack-proof.md). G2 remains open.
+Fork supply-chain acceptance is tracked in
 [waltid-identity](https://github.com/nusacred-lab/waltid-identity).
 
 Initial scope: one issuer, one company, one job opening, and synthetic data.
@@ -26,7 +28,8 @@ application tests will use separate `*-p2.demo.inoerawan.id` routing and indepen
 realm/key/database state. Host availability, tunnel lifecycle, monitoring and
 manual certificate renewal must be operated before final-demo opening.
 The environment runbook is maintained as `docs/local-demo.md` in
-`nusacred-lab/platform-infra`. These documentation changes are still local.
+`nusacred-lab/platform-infra`. The private Keycloak/PostgreSQL/SMTP proof is documented in
+`docs/P2-identity-proof.md` in that repository; public routing remains closed.
 
 Local check: `python3 ci/check_policy.py`. CI also scans the full Git history
 and reviews dependency changes on pull requests. See SECURITY-PROJECT.md.
