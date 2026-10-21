@@ -27,7 +27,9 @@ Environment update, 21 October 2026: public HTTPS probes under
 `{issuer,wallet,auth,verifier}.demo.inoerawan.id` passed and the owner confirmed
 phone access. P2 uses separate prerelease routing, realm, keys and databases.
 Public prerelease login and the Android certificate association are active;
-credential/recovery testing was explicitly approved and is active. Host
+credential/recovery testing was explicitly approved and is active. P2/G2 passed
+for the synthetic prerelease on 22 October 2026, including physical scan,
+recovery and fresh-install presentation. Host
 availability, tunnel lifecycle, monitoring, certificate renewal and off-host
 backup remain final-demo requirements. The companion `nusacred-lab/platform-infra`
 repository maintains `docs/local-demo.md` and `docs/P2-recovery-proof.md`.

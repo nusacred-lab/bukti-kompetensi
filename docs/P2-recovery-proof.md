@@ -152,11 +152,17 @@ the verified domain.
 The camera preview uses CameraX's compatible TextureView mode to avoid a SurfaceView
 overlay covering sibling controls in the scrolling Compose layout. See the
 [official CameraX implementation-mode contract](https://developer.android.com/reference/androidx/camera/view/PreviewView.ImplementationMode).
-Optical camera decoding remains pending physical positioning of the phone.
+On 22 October 2026, the human positioned the phone and confirmed recognition.
+The supported optical-decoder event was observed after a baseline with no saved
+request. The signed APK showed the credential sent, and the exact fresh verifier
+session shared with the tested browser button returned `SUCCESSFUL`. No automated
+link/frame was injected during scanning, and the later inspection script stopped
+before any review/send action because the human had already completed it.
 
-G2 remains open until the physical camera scan and all required prerelease
-acceptance evidence are complete. Building a scanner,
-verifying a domain, or passing private HTTP tests alone does not close G2.
+G2 passed for the synthetic P2 prerelease proof on 22 October 2026. This includes
+physical optical scanning and presentation, exact browser-context matching,
+HTTPS callback/context retention, fresh-install recovery and the recovery/isolation
+matrix. This does not promote the build to production or close later project gates.
 
 ## Implementation references
 
@@ -186,3 +192,12 @@ older launch link over a later scan. An invalid wallet request is checked agains
 `/auth/me` before treating it as session revocation, so a request failure cannot
 silently sign out an otherwise valid account. Recovery and expired IdP sessions
 remain denied by the server.
+
+
+Physical timeout regression also passed with a deliberately temporary 30-second
+native session: the camera stayed open, the unexpired request survived, expiry
+was visible, and the server denied the expired session. The client was restored
+to 900 seconds in a finally block and normal login/presentation passed. A rejected
+request left a valid account signed in. Actual rotation recreated the Activity
+and retained the newer request over its old launch Intent; the original device
+rotation policy was restored. These tests used the final signed candidate.
