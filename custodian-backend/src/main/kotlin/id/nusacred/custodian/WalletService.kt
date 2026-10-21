@@ -11,7 +11,7 @@ import java.net.URLDecoder
 import java.util.concurrent.ConcurrentHashMap
 
 /** Private server adapter. No client selects a wallet, key, endpoint, or upstream bearer token. */
-class WalletClient(origin: String) {
+class WalletClient internal constructor(origin: String, private val transport: ((HttpRequest) -> Pair<Int, java.io.InputStream>)? = null) {
     private val base = URI(origin)
     private val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3))
         .followRedirects(HttpClient.Redirect.NEVER).build()
@@ -22,9 +22,10 @@ class WalletClient(origin: String) {
             .header("Accept", "application/json")
         if (body == null) b.GET() else b.header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(json(body)))
-        val r = http.send(b.build(), HttpResponse.BodyHandlers.ofInputStream())
-        val bytes = r.body().use { it.readNBytes(2_097_153) }
-        if (r.statusCode() !in 200..299 || bytes.size > 2_097_152) throw ReconciliationRequired()
+        val request = b.build()
+        val (status, bodyStream) = transport?.invoke(request) ?: http.send(request, HttpResponse.BodyHandlers.ofInputStream()).let { it.statusCode() to it.body() }
+        val bytes = bodyStream.use { it.readNBytes(2_097_153) }
+        if (status !in 200..299 || bytes.size > 2_097_152) throw ReconciliationRequired()
         return String(bytes, Charsets.UTF_8)
     }
     private fun segment(value: String): String {
@@ -68,7 +69,7 @@ class WalletClient(origin: String) {
                 listOf(mapOf("queryId" to query, "credentialId" to credential)))))
         val response = JSONObjectUtils.parse(request("/wallet/${segment(wallet)}/credentials/present/send-response",
             mapOf("requestUrl" to url, "vpToken" to (vp["vpToken"] as? String ?: throw AccessDenied()))))
-        return response["transmission_success"] == true
+        return response["transmission_success"] as? Boolean ?: throw ReconciliationRequired()
     }
 }
 

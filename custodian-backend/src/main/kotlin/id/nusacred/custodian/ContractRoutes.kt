@@ -8,7 +8,10 @@ import io.ktor.server.response.respondText
 
 /** Stable P3 routes coexist with the P2 APK endpoints during migration. */
 fun Application.contractRoutes(auth: OidcService, wallet: WalletService) {
-    val guard = RequestGuard.oidc(auth)
+    contractRoutes(wallet, RequestGuard.oidc(auth))
+}
+
+internal fun Application.contractRoutes(wallet: WalletService, guard: RequestGuard) {
     routing {
         get("/api/v1/wallet/credentials/{id}") { call.api {
             guard.identity(call,false).requireRole(Role.CANDIDATE)

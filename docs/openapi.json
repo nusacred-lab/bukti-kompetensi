@@ -3921,6 +3921,13 @@
             "type": [
               "string",
               "null"
+            ],
+            "enum": [
+              "CANCELLED",
+              "EXPIRED",
+              "RECONCILE_REQUIRED",
+              "TRANSMISSION_REJECTED",
+              null
             ]
           }
         },
@@ -3928,7 +3935,8 @@
           "id",
           "state",
           "reason"
-        ]
+        ],
+        "description": "CANCELLED/EXPIRED is terminal TTL expiry; CANCELLED/TRANSMISSION_REJECTED is an explicit negative upstream transmission. Neither is sent again. RECONCILE_REQUIRED means an uncertain outcome; COMPLETED is a confirmed successful dispatch."
       },
       "OfferReservation": {
         "type": "object",
@@ -3946,12 +3954,17 @@
           },
           "state": {
             "const": "PENDING"
+          },
+          "expiresAt": {
+            "type": "integer",
+            "format": "int64"
           }
         },
         "required": [
           "id",
           "operationId",
-          "state"
+          "state",
+          "expiresAt"
         ]
       },
       "Offer": {
