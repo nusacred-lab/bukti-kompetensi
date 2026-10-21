@@ -58,6 +58,9 @@ class AccessRegistryTest {
         }
         java.sql.DriverManager.getConnection("jdbc:sqlite:$file").use { db ->
             db.createStatement().use {
+                it.execute("DROP TABLE idempotency_keys")
+                it.execute("DROP TABLE exchange_contexts")
+                it.execute("DROP TABLE audit")
                 it.execute("ALTER TABLE accounts DROP COLUMN fresh_flow_after_ms")
                 it.execute("PRAGMA user_version=1")
             }

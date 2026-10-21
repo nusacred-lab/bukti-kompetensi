@@ -27,15 +27,23 @@ jobs:
       - name: Install Android build platform
         run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;37.0.0"'
       - name: Require reviewed dependency hashes and lockfiles
-        run: python3 ci/verify_dependency_review.py
+        run: |
+          python3 ci/verify_dependency_review.py
+          python3 ci/check_api_contract.py
       - name: Build JVM, Android and WebAssembly with strict dependency checks
         env:
           GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
-        run: ./gradlew :custodian-backend:test :custodian-backend:installDist :android-wallet:assembleDebug :android-wallet:lintDebug :web-portals:wasmJsBrowserDistribution --dependency-verification strict --no-daemon
+        run: ./gradlew :shared-contracts:jvmTest :backend-common:test :integration-tests:test :issuer-backend:installDist :company-backend:installDist :custodian-backend:test :custodian-backend:installDist :android-wallet:assembleDebug :android-wallet:lintDebug :web-portals:wasmJsBrowserDistribution --dependency-verification strict --no-daemon
       - name: Install pinned vulnerability scanner
         run: python3 ci/install_tool.py trivy "$RUNNER_TEMP/tools"
       - name: Scan actual JVM runtime dependencies
         run: '"$RUNNER_TEMP/tools/trivy" rootfs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --format json --output build/p2-runtime-scan.json custodian-backend/build/install/custodian-backend/lib'
+      - name: Scan separate issuer and company runtime graphs
+        run: |
+          for service in issuer company; do
+            "$RUNNER_TEMP/tools/trivy" rootfs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --format json --output "build/p3-$service-runtime-scan.json" "$service-backend/build/install/$service-backend/lib"
+            python3 ci/check_runtime_scan.py "build/p3-$service-runtime-scan.json"
+          done
       - name: Reject empty runtime scan coverage
         run: python3 ci/check_runtime_scan.py
       - name: Scan the complete locked Android runtime graph
@@ -58,6 +66,10 @@ jobs:
             android-wallet/build/outputs/apk/debug/*.apk
             web-portals/build/dist/wasmJs/productionExecutable/
             custodian-backend/build/reports/tests/test/
+            backend-common/build/reports/tests/test/
+            integration-tests/build/reports/tests/test/
+            shared-contracts/build/reports/tests/jvmTest/
+            build/p3-*-runtime-scan.json
             build/p2-runtime-scan.json
             build/p2-container-scan.json
             build/android-runtime.cdx.json

@@ -1,5 +1,6 @@
 package id.nusacred.custodian
 
+import id.nusacred.common.ApiFailure
 import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
@@ -7,8 +8,8 @@ import java.sql.ResultSet
 import java.time.Instant
 import java.util.UUID
 
-class AccessDenied : RuntimeException()
-class ReconciliationRequired : RuntimeException()
+class AccessDenied : ApiFailure(404,"NOT_FOUND","The requested object is not available.")
+class ReconciliationRequired : ApiFailure(503,"RECONCILE_REQUIRED","The operation requires reconciliation.",true)
 
 data class AccountAccess(val id: String, val revision: Long, val gate: String, val freshAfter: Long)
 data class WalletBinding(val operation: String, val state: String, val walletId: String?, val keyId: String?)
@@ -16,7 +17,7 @@ data class WalletBinding(val operation: String, val state: String, val walletId:
 /** One custodian process owns this database. The monitor also serializes dispatch with recovery.
  * No database transaction stays open during an upstream call. Never deploy multiple replicas.
  */
-class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) : AutoCloseable {
+class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) : AutoCloseable, OidcRegistry {
     private val db: Connection = DriverManager.getConnection("jdbc:sqlite:${path.toAbsolutePath()}")
     init {
         db.createStatement().use { s ->
@@ -27,7 +28,7 @@ class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) 
         }
         transaction {
             val version = query("PRAGMA user_version") { it.getInt(1) }.single()
-            require(version in 0..2) { "Unsupported access registry schema" }
+            require(version in 0..3) { "Unsupported access registry schema" }
             if (version == 0) {
                 execute("""CREATE TABLE accounts(id TEXT PRIMARY KEY, issuer TEXT NOT NULL, subject TEXT NOT NULL,
                     revision INTEGER NOT NULL DEFAULT 0, gate TEXT NOT NULL DEFAULT 'OPEN'
@@ -53,6 +54,18 @@ class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) 
                 execute("UPDATE accounts SET fresh_flow_after_ms=fresh_after*1000+999 WHERE fresh_after>=0")
                 execute("PRAGMA user_version=2")
             }
+            if (version < 3) {
+                execute("""CREATE TABLE exchange_contexts(id TEXT PRIMARY KEY REFERENCES pending_operations(id),
+                    preview_json TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'PREVIEWED'
+                    CHECK(state IN ('PREVIEWED','EXECUTING','COMPLETED','DECLINED','EXPIRED','RECONCILE_REQUIRED')))""")
+                execute("""CREATE TABLE idempotency_keys(account_id TEXT NOT NULL REFERENCES accounts(id), session_hash TEXT NOT NULL,
+                    action TEXT NOT NULL, key_hash TEXT NOT NULL, payload_hash TEXT NOT NULL, operation_id TEXT NOT NULL REFERENCES pending_operations(id),
+                    PRIMARY KEY(account_id,session_hash,action,key_hash))""")
+                execute("""CREATE TABLE audit(id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES accounts(id),
+                    action TEXT NOT NULL, resource TEXT NOT NULL, at INTEGER NOT NULL)""")
+                execute("PRAGMA user_version=3")
+            }
+            execute("UPDATE exchange_contexts SET state='RECONCILE_REQUIRED' WHERE state='EXECUTING'")
             // A crash after reserving or dispatching must never silently retry a side effect.
             execute("UPDATE wallet_bindings SET state='RECONCILE_REQUIRED' WHERE state='PROVISIONING'")
             execute("UPDATE pending_operations SET state='RECONCILE_REQUIRED' WHERE state='DISPATCHED'")
@@ -83,8 +96,8 @@ class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) 
         val id = query("SELECT id FROM accounts WHERE issuer=? AND subject=?", issuer, subject) { it.getString(1) }.single()
         return account(id)
     }
-    @Synchronized fun registerSession(issuer: String, subject: String, tokenHash: String, sid: String,
-                                      authTime: Long, expires: Long, loginStarted: Instant? = null): AccountAccess = transaction {
+    @Synchronized override fun registerSession(issuer: String, subject: String, tokenHash: String, sid: String,
+                                      authTime: Long, expires: Long, loginStarted: Instant?): AccountAccess = transaction {
         val a = identify(issuer, subject)
         val completionMillis = query("SELECT fresh_flow_after_ms FROM accounts WHERE id=?", a.id) { it.getLong(1) }.single()
         // Same-second authentication is safe only with a nonce-bound flow issued after durable completion.
@@ -99,7 +112,7 @@ class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) 
             tokenHash, a.id, sid, a.revision, expires)
         account(a.id)
     }
-    @Synchronized fun authorize(tokenHash: String): AccountAccess {
+    @Synchronized override fun authorize(tokenHash: String): AccountAccess {
         val a = query("""SELECT a.* FROM accounts a JOIN app_sessions s ON s.account_id=a.id
             WHERE s.token_hash=? AND s.revoked=0 AND s.revision=a.revision AND a.gate='OPEN' AND s.expires>?""",
             tokenHash, now().epochSecond) {
@@ -107,7 +120,8 @@ class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) 
         }.singleOrNull() ?: throw AccessDenied()
         return a
     }
-    @Synchronized fun revoke(tokenHash: String) { execute("UPDATE app_sessions SET revoked=1 WHERE token_hash=?", tokenHash) }
+    @Synchronized override fun accountId(tokenHash: String): String = authorize(tokenHash).id
+    @Synchronized override fun revoke(tokenHash: String) { execute("UPDATE app_sessions SET revoked=1 WHERE token_hash=?", tokenHash) }
     @Synchronized fun <T> read(tokenHash: String, block: () -> T): T {
         authorize(tokenHash)
         return block()
@@ -131,6 +145,7 @@ class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) 
         execute("UPDATE accounts SET revision=?,gate='LOCKED' WHERE id=?", revision, a.id)
         execute("UPDATE app_sessions SET revoked=1 WHERE account_id=?", a.id)
         execute("UPDATE pending_operations SET state='CANCELLED' WHERE account_id=? AND state='PENDING'", a.id)
+        execute("UPDATE exchange_contexts SET state='DECLINED' WHERE state='PREVIEWED' AND id IN (SELECT id FROM pending_operations WHERE account_id=?)", a.id)
         execute("INSERT INTO recovery_operations(id,account_id,revision,state,started) VALUES(?,?,?,'LOCKED',?)",
             operation, a.id, revision, now().epochSecond)
         revision
@@ -193,14 +208,58 @@ class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) 
             AND token_hash=? AND revision=? AND payload_hash=? AND expires>? AND state='PENDING'""",
             id, a.id, tokenHash, a.revision, payloadHash, now().epochSecond)
         if (changed != 1) throw AccessDenied()
+        execute("UPDATE exchange_contexts SET state='EXECUTING' WHERE id=?",id)
         try {
             val result = send()
             execute("UPDATE pending_operations SET state='COMPLETED' WHERE id=?", id)
+            execute("UPDATE exchange_contexts SET state='COMPLETED' WHERE id=?",id)
             return result
         } catch (e: Exception) {
             execute("UPDATE pending_operations SET state='RECONCILE_REQUIRED' WHERE id=?", id)
+            execute("UPDATE exchange_contexts SET state='RECONCILE_REQUIRED' WHERE id=?",id)
             throw ReconciliationRequired()
         }
+    }
+    @Synchronized fun savePreview(tokenHash: String, id: String, summary: String, expires: Long, previewJson: String) = transaction {
+        prepare(tokenHash,id,summary,expires)
+        execute("INSERT INTO exchange_contexts(id,preview_json) VALUES(?,?)",id,previewJson)
+        val a = authorize(tokenHash)
+        execute("INSERT INTO audit VALUES(?,?,?,?,?)",UUID.randomUUID().toString(),a.id,"PREVIEW_CREATED",id,now().epochSecond)
+    }
+    @Synchronized fun preview(tokenHash: String, id: String): String {
+        val a = authorize(tokenHash)
+        return query("""SELECT e.preview_json FROM exchange_contexts e JOIN pending_operations p ON p.id=e.id
+            WHERE e.id=? AND p.account_id=? AND p.token_hash=? AND p.revision=? AND p.expires>?
+            AND p.state='PENDING' AND e.state='PREVIEWED'""",id,a.id,tokenHash,a.revision,now().epochSecond) { it.getString(1) }
+            .singleOrNull() ?: throw AccessDenied()
+    }
+    @Synchronized fun decline(tokenHash: String, id: String) = transaction {
+        preview(tokenHash,id)
+        execute("UPDATE exchange_contexts SET state='DECLINED' WHERE id=?",id)
+        execute("UPDATE pending_operations SET state='CANCELLED' WHERE id=?",id)
+    }
+    @Synchronized fun operation(tokenHash: String, id: String): Map<String,Any?> {
+        val a = authorize(tokenHash)
+        return query("SELECT state FROM pending_operations WHERE id=? AND account_id=? AND token_hash=? AND revision=?",id,a.id,tokenHash,a.revision) {
+            mapOf("id" to id,"state" to it.getString(1),"reason" to if(it.getString(1)=="RECONCILE_REQUIRED") "RECONCILE_REQUIRED" else null)
+        }.singleOrNull() ?: throw AccessDenied()
+    }
+    @Synchronized fun consent(tokenHash: String, id: String, summary: String, key: String, requestHash: String = summary): String = transaction {
+        val a = authorize(tokenHash)
+        require(key.matches(Regex("[A-Za-z0-9_-]{16,128}")))
+        val old = query("SELECT operation_id,payload_hash FROM idempotency_keys WHERE account_id=? AND session_hash=? AND action='present' AND key_hash=?",a.id,tokenHash,hash(key)) {
+            it.getString(1) to it.getString(2)
+        }.singleOrNull()
+        if (old != null) {
+            if(old.first != id || old.second != requestHash) throw ApiFailure(409,"IDEMPOTENCY_CONFLICT","This key was used for different input.")
+            return@transaction old.first
+        }
+        preview(tokenHash,id)
+        val expected = query("SELECT payload_hash FROM pending_operations WHERE id=?",id) { it.getString(1) }.single()
+        if(expected != summary) throw AccessDenied()
+        execute("INSERT INTO idempotency_keys VALUES(?,?,'present',?,?,?)",a.id,tokenHash,hash(key),requestHash,id)
+        execute("INSERT INTO audit VALUES(?,?,?,?,?)",UUID.randomUUID().toString(),a.id,"CONSENT_ACCEPTED",id,now().epochSecond)
+        id
     }
     @Synchronized override fun close() { db.close() }
 }

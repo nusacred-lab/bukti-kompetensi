@@ -12728,9 +12728,18 @@
   ],
   "lockfiles": {
     "settings-gradle.lockfile": "e58bb2ed80db9f829601a658d7c33b9802eb7d2191c31e79c28e01f14c225926",
-    "custodian-backend/gradle.lockfile": "9bb56c265d876f26d28044eb0e7767bbd634b2dfb6f331e086989b2631ceb738",
     "android-wallet/gradle.lockfile": "369e260dc3983078ed018e92fdbdb01e9a2e3559abb06a40f20a9b6d20bd0912",
+    "backend-common/gradle.lockfile": "443254375a002b155831fe0c2db8202cc0e07f1038c3fee699d2bdd47d703a1e",
+    "company-backend/gradle.lockfile": "3aa2d077ceb1f1efac86e71d49859badd21fd54f366938309c0508b690a9a3c9",
+    "custodian-backend/gradle.lockfile": "9bb56c265d876f26d28044eb0e7767bbd634b2dfb6f331e086989b2631ceb738",
+    "integration-tests/gradle.lockfile": "e871656d775171aea972cf0acf82278a8248b7a815d2082fa811a30aa7041a04",
+    "issuer-backend/gradle.lockfile": "f112dfb7e13bf0bd4f1ec882c6c149046a7ec49a9eefc6996001a79f0210d6c5",
+    "shared-contracts/gradle.lockfile": "7b631fdb8bdca1e44dce8910be685d69ddf6f05c5e4a49b605ac043053ea5695",
     "web-portals/gradle.lockfile": "ccddcc15ac58b65dbab48feac7b6b0c28d1a054a295f905007ada36232695be2"
   },
-  "reviewLimitation": "Single maintainer. Publisher hashes, module mappings and independent downloads establish consistency, not independent human review."
+  "reviewLimitation": "Single maintainer. Publisher hashes, module mappings and independent downloads establish consistency, not independent human review.",
+  "p3LockReview": {
+    "date": "2026-10-22",
+    "method": "Every resolved group:name:version is already in the reviewed verification-metadata ledger; no new hashes, artifact versions or repositories accepted. New local project modules add no external artifacts."
+  }
 }

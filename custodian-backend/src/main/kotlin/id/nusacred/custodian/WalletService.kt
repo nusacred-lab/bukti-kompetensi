@@ -59,6 +59,7 @@ class WalletClient(origin: String) {
         return wallet to key
     }
     fun credentials(wallet: String): String = request("/wallet/${segment(wallet)}/credentials")
+    fun credential(wallet: String, id: String): String = request("/wallet/${segment(wallet)}/credentials/${segment(id)}")
     fun preview(wallet: String, url: String): Map<String, Any> = JSONObjectUtils.parse(request(
         "/wallet/${segment(wallet)}/credentials/present/preview", mapOf("requestUrl" to url)))
     fun present(wallet: String, url: String, query: String, credential: String, key: String): Boolean {
@@ -72,10 +73,6 @@ class WalletClient(origin: String) {
 }
 
 class WalletService(private val registry: AccessRegistry, private val upstream: WalletClient) {
-    private data class Preview(val url: String, val wallet: String, val key: String, val query: String,
-                               val credential: String, val summary: String, val expires: Instant)
-    // Restart cancels these previews. The durable consent ledger prevents reuse after dispatch/recovery.
-    private val previews = ConcurrentHashMap<String, Preview>()
     fun provision(opaque: String): WalletBinding = registry.provision(hash(opaque), upstream::create)
     fun reconcile(opaque: String): WalletBinding = registry.reconcile(hash(opaque), upstream::lookup)
     fun credentials(opaque: String): String = registry.read(hash(opaque)) {
@@ -83,10 +80,12 @@ class WalletService(private val registry: AccessRegistry, private val upstream: 
         if (binding.state != "READY") throw AccessDenied()
         upstream.credentials(binding.walletId!!)
     }
+    fun credential(opaque: String, id: String): String = registry.read(hash(opaque)) {
+        val binding = registry.binding(hash(opaque))?.takeIf { it.state == "READY" } ?: throw AccessDenied()
+        upstream.credential(binding.walletId!!,id)
+    }
     fun preview(opaque: String, url: String): Map<String, Any?> = registry.read(hash(opaque)) {
         validatePresentationUrl(url)
-        previews.entries.removeIf { !it.value.expires.isAfter(Instant.now()) }
-        if (previews.size >= 256) throw AccessDenied()
         val b = registry.binding(hash(opaque))?.takeIf { it.state == "READY" } ?: throw AccessDenied()
         val p = upstream.preview(b.walletId!!, url)
         if (p["valid"] != true || p["keyId"] != b.keyId) throw AccessDenied()
@@ -103,19 +102,33 @@ class WalletService(private val registry: AccessRegistry, private val upstream: 
         val summary = hash(json(mapOf("url" to url, "wallet" to b.walletId, "key" to b.keyId,
             "query" to query, "credential" to credential, "details" to details)))
         val expires = Instant.now().plusSeconds(240)
-        registry.prepare(hash(opaque), id, summary, expires.epochSecond)
-        previews[id] = Preview(url, b.walletId, b.keyId!!, query, credential, summary, expires)
+        registry.savePreview(hash(opaque), id, summary, expires.epochSecond, json(mapOf(
+            "url" to url, "wallet" to b.walletId, "key" to b.keyId, "query" to query,
+            "credential" to credential, "summary" to summary, "disclosures" to disclosures, "expires" to expires.epochSecond)))
         mapOf("context_id" to id, "credential_id" to credential, "summary_hash" to summary,
             "expires_at" to expires.epochSecond, "consent_required" to true, "details" to details)
     }
     fun present(opaque: String, id: String, summary: String): Boolean {
-        val p = previews[id] ?: throw AccessDenied()
-        if (!p.expires.isAfter(Instant.now()) || p.summary != summary) throw AccessDenied()
+        val p = JSONObjectUtils.parse(registry.preview(hash(opaque),id))
+        if (p["summary"] != summary) throw AccessDenied()
         return registry.dispatch(hash(opaque), id, summary) {
-            previews.remove(id)
-            upstream.present(p.wallet, p.url, p.query, p.credential, p.key)
+            upstream.present(p["wallet"] as String,p["url"] as String,p["query"] as String,p["credential"] as String,p["key"] as String)
         }
     }
+    fun presentConsented(opaque: String, id: String, summary: String, credential: String, disclosures: List<String>, key: String): Map<String,Any?> = synchronized(registry) {
+        // Idempotent retries return the durable outcome; they never dispatch a second time.
+        val state = registry.operation(hash(opaque),id)["state"]
+        if(state == "PENDING") {
+            val p = JSONObjectUtils.parse(registry.preview(hash(opaque),id))
+            if(p["credential"] != credential || p["disclosures"] != disclosures || p["summary"] != summary) throw AccessDenied()
+        }
+        registry.consent(hash(opaque),id,summary,key,hash(json(mapOf("id" to id,"summary" to summary,"credential" to credential,"disclosures" to disclosures))))
+        if(state == "PENDING") present(opaque,id,summary)
+        registry.operation(hash(opaque),id)
+    }
+    fun decline(opaque: String,id: String) = registry.decline(hash(opaque),id)
+    fun operation(opaque: String,id: String) = registry.operation(hash(opaque),id)
+
 }
 
 /** Only request references produced by the isolated P2 verifier are accepted. */

@@ -11,6 +11,7 @@ kotlin {
     }
     sourceSets {
         wasmJsMain.dependencies {
+    implementation(project(":shared-contracts"))
             implementation(libs.kotlinx.browser)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
