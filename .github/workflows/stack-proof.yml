@@ -1,0 +1,65 @@
+name: P2 stack proof
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: stack-proof-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+        with:
+          distribution: temurin
+          java-version: 21.0.12.1+1
+      - name: Verify inherited Gradle wrapper and distribution checksum
+        run: |
+          echo '238e777fcddd7e34f9708186085def2abd6e08e658505b38718d79d74c21abd5  gradle/wrapper/gradle-wrapper.jar' | sha256sum -c -
+          grep -Fx 'distributionSha256Sum=bafd5ce9cfaea0fbccfdc8439a1ac42fbd4cd9c89dc9a988228d8a2639a58e6c' gradle/wrapper/gradle-wrapper.properties
+      - name: Install Android build platform
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;37.0.0"'
+      - name: Require reviewed dependency hashes and lockfiles
+        run: python3 ci/verify_dependency_review.py
+      - name: Build JVM, Android and WebAssembly with strict dependency checks
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
+        run: ./gradlew :custodian-backend:test :custodian-backend:installDist :android-wallet:assembleDebug :android-wallet:lintDebug :web-portals:wasmJsBrowserDistribution --dependency-verification strict --no-daemon
+      - name: Install pinned vulnerability scanner
+        run: python3 ci/install_tool.py trivy "$RUNNER_TEMP/tools"
+      - name: Scan actual JVM runtime dependencies
+        run: '"$RUNNER_TEMP/tools/trivy" rootfs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --format json --output build/p2-runtime-scan.json custodian-backend/build/install/custodian-backend/lib'
+      - name: Reject empty runtime scan coverage
+        run: python3 ci/check_runtime_scan.py
+      - name: Scan the complete locked Android runtime graph
+        run: |
+          python3 ci/write_runtime_sbom.py --module android-wallet --configuration debugRuntimeClasspath --output build/android-runtime.cdx.json
+          "$RUNNER_TEMP/tools/trivy" sbom --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --format json --output build/android-runtime-scan.json build/android-runtime.cdx.json
+          python3 ci/check_runtime_scan.py build/android-runtime-scan.json build/android-runtime.cdx.json
+      - name: Build and scan the complete application container
+        run: |
+          docker build -f deploy/Containerfile.custodian --build-arg SOURCE_REVISION="$GITHUB_SHA" -t competency-proof-stack-probe .
+          probe_image_id=$(docker image inspect competency-proof-stack-probe --format '{{.Id}}')
+          "$RUNNER_TEMP/tools/trivy" image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --format json --output build/p2-container-scan.json "$probe_image_id"
+          python3 ci/check_runtime_scan.py build/p2-container-scan.json
+      - name: Save minimal build artifacts and test evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: p2-stack-proof
+          retention-days: 7
+          path: |
+            android-wallet/build/outputs/apk/debug/*.apk
+            web-portals/build/dist/wasmJs/productionExecutable/
+            custodian-backend/build/reports/tests/test/
+            build/p2-runtime-scan.json
+            build/p2-container-scan.json
+            build/android-runtime.cdx.json
+            build/android-runtime-scan.json
+            android-wallet/build/reports/lint-results-debug.*

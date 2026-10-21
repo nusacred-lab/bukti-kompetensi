@@ -1,0 +1,16 @@
+# Same reviewed Linux amd64 JRE base used by the accepted walt.id fork baseline.
+FROM docker.io/library/eclipse-temurin@sha256:da0f0d242bec39e3fe5c1ac4c415840f03be9cef848c243d723166708e02148c
+ARG SOURCE_REVISION
+LABEL org.opencontainers.image.source="https://github.com/nusacred-lab/competency-proof"
+LABEL org.opencontainers.image.revision="${SOURCE_REVISION}"
+LABEL org.nusacred.scope="synthetic-isolated-demo-only"
+WORKDIR /app
+RUN mkdir /data && chown 10001:10001 /data
+COPY LICENSE /app/LICENSE
+COPY custodian-backend/build/install/custodian-backend/lib/ /app/lib/
+COPY custodian-backend/build/install/custodian-backend/native/ /app/native/
+COPY web-portals/build/dist/wasmJs/productionExecutable/ /app/portals/
+USER 10001:10001
+ENV HOME=/tmp HTTP_HOST=0.0.0.0 HTTP_PORT=8080 PORTAL_ROOT=/app/portals
+EXPOSE 8080
+ENTRYPOINT ["java", "-Dorg.sqlite.lib.path=/app/native", "-cp", "/app/lib/*", "id.nusacred.custodian.MainKt"]

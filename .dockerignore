@@ -1,0 +1,17 @@
+# Only previously built, dependency-verified distribution files enter the image.
+**
+!LICENSE
+!custodian-backend/
+!custodian-backend/build/
+!custodian-backend/build/install/
+!custodian-backend/build/install/custodian-backend/
+!custodian-backend/build/install/custodian-backend/lib/
+!custodian-backend/build/install/custodian-backend/lib/**
+!custodian-backend/build/install/custodian-backend/native/
+!custodian-backend/build/install/custodian-backend/native/**
+!web-portals/
+!web-portals/build/
+!web-portals/build/dist/
+!web-portals/build/dist/wasmJs/
+!web-portals/build/dist/wasmJs/productionExecutable/
+!web-portals/build/dist/wasmJs/productionExecutable/**
