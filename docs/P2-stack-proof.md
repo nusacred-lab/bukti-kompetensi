@@ -102,3 +102,11 @@ scanning and recording its immutable image ID. `python3 ci/check_container_probe
 checks the real loopback endpoint, compares served HTML/JS/Wasm to the built asset
 bytes and rejects exposed unimplemented or private paths. This replaces host-run
 probe servers for application testing. Android remains native on the phone.
+
+## OIDC follow-up
+
+The later P2.3 increment adds actual custodian BFF and native PKCE session
+verification with 15 real-service rejection/flow checks. See
+[P2 login proof](P2-login-proof.md) for the new dependency ledger, Android runtime
+SCA and remaining physical-device/recovery limitations. Earlier probe-only
+statements above describe the initial P2.1 evidence, not the current login code.

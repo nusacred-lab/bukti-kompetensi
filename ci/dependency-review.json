@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-10-21T11:19:03.132162+00:00",
-  "metadataSha256": "183e1d5c002de14a28296cd17027eeede296c7b1006e658cd3446814ca5040f5",
+  "reviewedAt": "2026-10-21T12:28:51.868603+00:00",
+  "metadataSha256": "d32009745c64f2bc8cb514f0f5280fa3d6ee1304b7a08c0c0955f1e7a62de4d4",
   "artifacts": [
     {
       "group": "androidx.activity",
@@ -56,6 +56,15 @@
       "sha256": "f34b5f8747deb0a2a5bdb1359666d914cf32708596249659ee168e8ca6102f13",
       "method": "published-sha256",
       "source": "https://dl.google.com/dl/android/maven2/androidx/activity/activity-ktx/1.13.0/activity-ktx-1.13.0.module.sha256"
+    },
+    {
+      "group": "androidx.annotation",
+      "name": "annotation",
+      "version": "1.2.0",
+      "artifact": "annotation-1.2.0.module",
+      "sha256": "2efcab81ef91b211bacd206eaacd995a51f633a2e96b57a8fc00144c5f9c56b3",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/annotation/annotation/1.2.0/annotation-1.2.0.module.sha256"
     },
     {
       "group": "androidx.annotation",
@@ -149,6 +158,42 @@
       "source": "https://dl.google.com/dl/android/maven2/androidx/annotation/annotation-wasm-js/1.9.1/annotation-wasm-js-1.9.1.module.sha256"
     },
     {
+      "group": "androidx.appcompat",
+      "name": "appcompat",
+      "version": "1.3.0",
+      "artifact": "appcompat-1.3.0.aar",
+      "sha256": "1a2b6c4c63fe0df594648c07bea664f22905fed27c66dc34612fd0c4d2bd877e",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/appcompat/appcompat/1.3.0/appcompat-1.3.0.aar.sha256"
+    },
+    {
+      "group": "androidx.appcompat",
+      "name": "appcompat",
+      "version": "1.3.0",
+      "artifact": "appcompat-1.3.0.module",
+      "sha256": "7ea2180142d870358ad4eb3449baf236792be7adaa70f4d273981fdea0a500d4",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/appcompat/appcompat/1.3.0/appcompat-1.3.0.module.sha256"
+    },
+    {
+      "group": "androidx.appcompat",
+      "name": "appcompat-resources",
+      "version": "1.3.0",
+      "artifact": "appcompat-resources-1.3.0.aar",
+      "sha256": "b2e199c9139b127533ddea6b4a8eb76f3dd69557bb852cab2d208367b6808d06",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/appcompat/appcompat-resources/1.3.0/appcompat-resources-1.3.0.aar.sha256"
+    },
+    {
+      "group": "androidx.appcompat",
+      "name": "appcompat-resources",
+      "version": "1.3.0",
+      "artifact": "appcompat-resources-1.3.0.module",
+      "sha256": "9a83d2e277195782b0ea28da51a5fc34f20aa849c5904d6ec6dcfc3002233630",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/appcompat/appcompat-resources/1.3.0/appcompat-resources-1.3.0.module.sha256"
+    },
+    {
       "group": "androidx.arch.core",
       "name": "core-common",
       "version": "2.1.0",
@@ -210,6 +255,42 @@
       "sha256": "3677abead5d4e06cf76cbacb954151e051779c2274494451fb424e375aa9e450",
       "method": "download-sha256",
       "source": "https://dl.google.com/dl/android/maven2/androidx/autofill/autofill/1.0.0/autofill-1.0.0.pom"
+    },
+    {
+      "group": "androidx.browser",
+      "name": "browser",
+      "version": "1.3.0",
+      "artifact": "browser-1.3.0.aar",
+      "sha256": "e740b1beeac82303415d68bee9d5c1f259716f560a829ca07c7ce97e60850e1b",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/browser/browser/1.3.0/browser-1.3.0.aar.sha256"
+    },
+    {
+      "group": "androidx.browser",
+      "name": "browser",
+      "version": "1.3.0",
+      "artifact": "browser-1.3.0.module",
+      "sha256": "97e4944992530956ecf11d4753d7feb067fd2a6c87b75148ae21b647bc6e066e",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/browser/browser/1.3.0/browser-1.3.0.module.sha256"
+    },
+    {
+      "group": "androidx.collection",
+      "name": "collection",
+      "version": "1.0.0",
+      "artifact": "collection-1.0.0.pom",
+      "sha256": "a7913a5275ad68e555d2612ebe8c14c367b153e14ca48a1872a64899020e54ef",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/collection/collection/1.0.0/collection-1.0.0.pom"
+    },
+    {
+      "group": "androidx.collection",
+      "name": "collection",
+      "version": "1.1.0",
+      "artifact": "collection-1.1.0.pom",
+      "sha256": "67e9066ca4acfdc6e3cc508293c31ba0398057ff118e4f70b1e1813c9a3456d1",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/collection/collection/1.1.0/collection-1.1.0.pom"
     },
     {
       "group": "androidx.collection",
@@ -1061,6 +1142,15 @@
     {
       "group": "androidx.concurrent",
       "name": "concurrent-futures",
+      "version": "1.0.0",
+      "artifact": "concurrent-futures-1.0.0.pom",
+      "sha256": "4505b9a5e30a9418b59a9ad6702c3e4193aea6e691a3d03cf220c7640ad083e2",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/concurrent/concurrent-futures/1.0.0/concurrent-futures-1.0.0.pom"
+    },
+    {
+      "group": "androidx.concurrent",
+      "name": "concurrent-futures",
       "version": "1.1.0",
       "artifact": "concurrent-futures-1.1.0.jar",
       "sha256": "0ce067c514a0d1049d1bebdf709e344ed3266fe9744275682937cdcb13334e9e",
@@ -1093,6 +1183,15 @@
       "sha256": "b67ff7a1f9be95687dfa86d6055147fc1d8bbe3b1dc19048c432afca18abfd95",
       "method": "published-sha256",
       "source": "https://dl.google.com/dl/android/maven2/androidx/core/core/1.18.0/core-1.18.0.module.sha256"
+    },
+    {
+      "group": "androidx.core",
+      "name": "core",
+      "version": "1.5.0",
+      "artifact": "core-1.5.0.module",
+      "sha256": "e3877fa529fe29177f34a26e0790ed35544848b0c7503bfed30b2539f1686d65",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/core/core/1.5.0/core-1.5.0.module.sha256"
     },
     {
       "group": "androidx.core",
@@ -1129,6 +1228,42 @@
       "sha256": "11386cfa46cbbfddb6a4059f14354c00691cf65d3d63c3618818a83326ef3c7f",
       "method": "published-sha256",
       "source": "https://dl.google.com/dl/android/maven2/androidx/core/core-viewtree/1.0.0/core-viewtree-1.0.0.module.sha256"
+    },
+    {
+      "group": "androidx.cursoradapter",
+      "name": "cursoradapter",
+      "version": "1.0.0",
+      "artifact": "cursoradapter-1.0.0.aar",
+      "sha256": "a81c8fe78815fa47df5b749deb52727ad11f9397da58b16017f4eb2c11e28564",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/cursoradapter/cursoradapter/1.0.0/cursoradapter-1.0.0.aar"
+    },
+    {
+      "group": "androidx.cursoradapter",
+      "name": "cursoradapter",
+      "version": "1.0.0",
+      "artifact": "cursoradapter-1.0.0.pom",
+      "sha256": "62d95c89850af21030b19f14d5f7ecd6d8bcc9a3014c59002ec99624caac8100",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/cursoradapter/cursoradapter/1.0.0/cursoradapter-1.0.0.pom"
+    },
+    {
+      "group": "androidx.customview",
+      "name": "customview",
+      "version": "1.0.0",
+      "artifact": "customview-1.0.0.aar",
+      "sha256": "20e5b8f6526a34595a604f56718da81167c0b40a7a94a57daa355663f2594df2",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/customview/customview/1.0.0/customview-1.0.0.aar"
+    },
+    {
+      "group": "androidx.customview",
+      "name": "customview",
+      "version": "1.0.0",
+      "artifact": "customview-1.0.0.pom",
+      "sha256": "ce9e47b87184f5bd5e139e9becd5b26476d42d78c31bf2fdedc37acb41b9ad49",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/customview/customview/1.0.0/customview-1.0.0.pom"
     },
     {
       "group": "androidx.customview",
@@ -1193,6 +1328,24 @@
       "originalMethod": "published-sha256"
     },
     {
+      "group": "androidx.drawerlayout",
+      "name": "drawerlayout",
+      "version": "1.0.0",
+      "artifact": "drawerlayout-1.0.0.aar",
+      "sha256": "9402442cdc5a43cf62fb14f8cf98c63342d4d9d9b805c8033c6cf7e802749ac1",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/drawerlayout/drawerlayout/1.0.0/drawerlayout-1.0.0.aar"
+    },
+    {
+      "group": "androidx.drawerlayout",
+      "name": "drawerlayout",
+      "version": "1.0.0",
+      "artifact": "drawerlayout-1.0.0.pom",
+      "sha256": "da6733425a83f5ce850878fa7201082345fed7c668dd58550fdd19c0396c6fa4",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/drawerlayout/drawerlayout/1.0.0/drawerlayout-1.0.0.pom"
+    },
+    {
       "group": "androidx.emoji2",
       "name": "emoji2",
       "version": "1.3.0",
@@ -1218,6 +1371,24 @@
       "sha256": "92be16cccb757f807bddd92f1fca95a038a810ccca051c4149c11682478954b8",
       "method": "published-sha256",
       "source": "https://dl.google.com/dl/android/maven2/androidx/emoji2/emoji2/1.4.0/emoji2-1.4.0.module.sha256"
+    },
+    {
+      "group": "androidx.fragment",
+      "name": "fragment",
+      "version": "1.3.4",
+      "artifact": "fragment-1.3.4.aar",
+      "sha256": "c023c0ab666456885284d8e88519a743bc863c2b2effb92741fc789cbdb10db4",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/fragment/fragment/1.3.4/fragment-1.3.4.aar.sha256"
+    },
+    {
+      "group": "androidx.fragment",
+      "name": "fragment",
+      "version": "1.3.4",
+      "artifact": "fragment-1.3.4.module",
+      "sha256": "6612132cce5bf1c58b23d76cc7cbda72ae9070230dc77cb2ca8d2c5a30a3dec5",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/fragment/fragment/1.3.4/fragment-1.3.4.module.sha256"
     },
     {
       "group": "androidx.graphics",
@@ -1384,6 +1555,33 @@
     },
     {
       "group": "androidx.lifecycle",
+      "name": "lifecycle-livedata",
+      "version": "2.9.4",
+      "artifact": "lifecycle-livedata-2.9.4.aar",
+      "sha256": "f240c2c94a96d4a5eae5d379c2a8589d426a33b989d83ae9f0e01f69502c0181",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata/2.9.4/lifecycle-livedata-2.9.4.aar.sha256"
+    },
+    {
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-livedata",
+      "version": "2.9.4",
+      "artifact": "lifecycle-livedata-2.9.4.module",
+      "sha256": "9a8153a07ae2edd8b7919a34ad9195847005eaed69fa3e5060636208a728c312",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata/2.9.4/lifecycle-livedata-2.9.4.module.sha256"
+    },
+    {
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-livedata-core",
+      "version": "2.3.1",
+      "artifact": "lifecycle-livedata-core-2.3.1.module",
+      "sha256": "b1e095d550d39a7d6c815761d6dbe3fd64eb31a39dc28146e78bbf2c01ba8f41",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata-core/2.3.1/lifecycle-livedata-core-2.3.1.module.sha256"
+    },
+    {
+      "group": "androidx.lifecycle",
       "name": "lifecycle-livedata-core",
       "version": "2.6.1",
       "artifact": "lifecycle-livedata-core-2.6.1.module",
@@ -1408,6 +1606,24 @@
       "sha256": "dee60656abb194da028d93b9bd652b4b164cdab35a000b475d63303c5d00994b",
       "method": "published-sha256",
       "source": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata-core/2.9.4/lifecycle-livedata-core-2.9.4.module.sha256"
+    },
+    {
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-livedata-core-ktx",
+      "version": "2.9.4",
+      "artifact": "lifecycle-livedata-core-ktx-2.9.4.aar",
+      "sha256": "f55b7a8d433e9b8163154ccaa42fa2be55c70cd1ede5eeea521a4b4b884dd4fe",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata-core-ktx/2.9.4/lifecycle-livedata-core-ktx-2.9.4.aar.sha256"
+    },
+    {
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-livedata-core-ktx",
+      "version": "2.9.4",
+      "artifact": "lifecycle-livedata-core-ktx-2.9.4.module",
+      "sha256": "0a940e79e256cc7fbec69d8eb35362ac79599ab4b21ab4846aba64ba4960a192",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata-core-ktx/2.9.4/lifecycle-livedata-core-ktx-2.9.4.module.sha256"
     },
     {
       "group": "androidx.lifecycle",
@@ -1662,6 +1878,15 @@
       "group": "androidx.lifecycle",
       "name": "lifecycle-viewmodel",
       "version": "2.9.4",
+      "artifact": "lifecycle-viewmodel-2.9.4.aar",
+      "sha256": "cab404b05d5faed209104a2aef14c0cbb316ab9fabe4a8f037b043e5d2f43435",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel/2.9.4/lifecycle-viewmodel-2.9.4.aar.sha256"
+    },
+    {
+      "group": "androidx.lifecycle",
+      "name": "lifecycle-viewmodel",
+      "version": "2.9.4",
       "artifact": "lifecycle-viewmodel-2.9.4.module",
       "sha256": "964d69d6b877296e8b79a77bb826ef5fb186aecaa7a1a7ff776fb2250c993006",
       "method": "published-sha256",
@@ -1834,6 +2059,24 @@
       "source": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-wasm-js/2.11.0/lifecycle-viewmodel-wasm-js-2.11.0.module.sha256"
     },
     {
+      "group": "androidx.loader",
+      "name": "loader",
+      "version": "1.0.0",
+      "artifact": "loader-1.0.0.aar",
+      "sha256": "11f735cb3b55c458d470bed9e25254375b518b4b1bad6926783a7026db0f5025",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/loader/loader/1.0.0/loader-1.0.0.aar"
+    },
+    {
+      "group": "androidx.loader",
+      "name": "loader",
+      "version": "1.0.0",
+      "artifact": "loader-1.0.0.pom",
+      "sha256": "c978d550808b47434aa49a63164110a50b55b0bcc6160a93a2e37d5110df8c5e",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/loader/loader/1.0.0/loader-1.0.0.pom"
+    },
+    {
       "group": "androidx.navigationevent",
       "name": "navigationevent",
       "version": "1.0.0",
@@ -1980,6 +2223,15 @@
       "sha256": "39bf997a28d8eed2cb319819f6f352a1ba3a78b9c979004fbe05e26b8f7d160b",
       "method": "published-sha256",
       "source": "https://dl.google.com/dl/android/maven2/androidx/profileinstaller/profileinstaller/1.4.0/profileinstaller-1.4.0.module.sha256"
+    },
+    {
+      "group": "androidx.savedstate",
+      "name": "savedstate",
+      "version": "1.1.0",
+      "artifact": "savedstate-1.1.0.module",
+      "sha256": "6eea2bc150828c8fcba777e93037038e2ee3ec441c43d6acecf2c5cd9ddc5374",
+      "method": "published-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/savedstate/savedstate/1.1.0/savedstate-1.1.0.module.sha256"
     },
     {
       "group": "androidx.savedstate",
@@ -2193,6 +2445,42 @@
       "source": "https://dl.google.com/dl/android/maven2/androidx/tracing/tracing/1.2.0/tracing-1.2.0.module.sha256"
     },
     {
+      "group": "androidx.vectordrawable",
+      "name": "vectordrawable",
+      "version": "1.1.0",
+      "artifact": "vectordrawable-1.1.0.aar",
+      "sha256": "46fd633ac01b49b7fcabc263bf098c5a8b9e9a69774d234edcca04fb02df8e26",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/vectordrawable/vectordrawable/1.1.0/vectordrawable-1.1.0.aar"
+    },
+    {
+      "group": "androidx.vectordrawable",
+      "name": "vectordrawable",
+      "version": "1.1.0",
+      "artifact": "vectordrawable-1.1.0.pom",
+      "sha256": "5b0e2d5b2179e54804785cbc21ce5f473b5e1ddd55a57da482e94dcd39492bb2",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/vectordrawable/vectordrawable/1.1.0/vectordrawable-1.1.0.pom"
+    },
+    {
+      "group": "androidx.vectordrawable",
+      "name": "vectordrawable-animated",
+      "version": "1.1.0",
+      "artifact": "vectordrawable-animated-1.1.0.aar",
+      "sha256": "76da2c502371d9c38054df5e2b248d00da87809ed058f3363eae87ce5e2403f8",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/vectordrawable/vectordrawable-animated/1.1.0/vectordrawable-animated-1.1.0.aar"
+    },
+    {
+      "group": "androidx.vectordrawable",
+      "name": "vectordrawable-animated",
+      "version": "1.1.0",
+      "artifact": "vectordrawable-animated-1.1.0.pom",
+      "sha256": "276a20116b705fb75b9003ee9496c56f6fd3b32375fb232472811eba60a040bd",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/vectordrawable/vectordrawable-animated/1.1.0/vectordrawable-animated-1.1.0.pom"
+    },
+    {
       "group": "androidx.versionedparcelable",
       "name": "versionedparcelable",
       "version": "1.1.1",
@@ -2209,6 +2497,24 @@
       "sha256": "5f51e65873ca612de3838fa90d2ee95b8d040efd31b9c390a19bf94d615cdb2f",
       "method": "download-sha256",
       "source": "https://dl.google.com/dl/android/maven2/androidx/versionedparcelable/versionedparcelable/1.1.1/versionedparcelable-1.1.1.pom"
+    },
+    {
+      "group": "androidx.viewpager",
+      "name": "viewpager",
+      "version": "1.0.0",
+      "artifact": "viewpager-1.0.0.aar",
+      "sha256": "147af4e14a1984010d8f155e5e19d781f03c1d70dfed02a8e0d18428b8fc8682",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/viewpager/viewpager/1.0.0/viewpager-1.0.0.aar"
+    },
+    {
+      "group": "androidx.viewpager",
+      "name": "viewpager",
+      "version": "1.0.0",
+      "artifact": "viewpager-1.0.0.pom",
+      "sha256": "1f72f836339d03c6eb013f65075e76ca87075a577578eb4f95f74a3a5d253128",
+      "method": "download-sha256",
+      "source": "https://dl.google.com/dl/android/maven2/androidx/viewpager/viewpager/1.0.0/viewpager-1.0.0.pom"
     },
     {
       "group": "androidx.window",
@@ -4600,6 +4906,28 @@
       "source": "https://repo.maven.apache.org/maven2/com/googlecode/juniversalchardet/juniversalchardet/1.0.3/juniversalchardet-1.0.3.pom",
       "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda",
       "originalMethod": "download-sha256"
+    },
+    {
+      "group": "com.nimbusds",
+      "name": "nimbus-jose-jwt",
+      "version": "10.10",
+      "artifact": "nimbus-jose-jwt-10.10.jar",
+      "sha256": "0edd2fbaab79e13f87d145d021f85a5c59956b2b6b5e761c0d664c87f94cda15",
+      "method": "inherited-reviewed-fork",
+      "source": "https://repo.maven.apache.org/maven2/com/nimbusds/nimbus-jose-jwt/10.10/nimbus-jose-jwt-10.10.jar.sha256",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda",
+      "originalMethod": "published-sha256"
+    },
+    {
+      "group": "com.nimbusds",
+      "name": "nimbus-jose-jwt",
+      "version": "10.10",
+      "artifact": "nimbus-jose-jwt-10.10.pom",
+      "sha256": "ffde352127bbf74d868d6c307791321f38911afd8458c56d89522cfe9793e11e",
+      "method": "inherited-reviewed-fork",
+      "source": "https://repo.maven.apache.org/maven2/com/nimbusds/nimbus-jose-jwt/10.10/nimbus-jose-jwt-10.10.pom.sha256",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda",
+      "originalMethod": "published-sha256"
     },
     {
       "group": "com.squareup",
@@ -7098,6 +7426,24 @@
       "source": "https://repo.maven.apache.org/maven2/net/java/dev/jna/jna-platform/5.9.0/jna-platform-5.9.0.pom",
       "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda",
       "originalMethod": "download-sha256"
+    },
+    {
+      "group": "net.openid",
+      "name": "appauth",
+      "version": "0.11.1",
+      "artifact": "appauth-0.11.1.aar",
+      "sha256": "d9ff43b14f7ee8e81bc802148190ad808beb5389953e6e6ffa53cd5575ea611e",
+      "method": "published-sha256",
+      "source": "https://repo.maven.apache.org/maven2/net/openid/appauth/0.11.1/appauth-0.11.1.aar.sha256"
+    },
+    {
+      "group": "net.openid",
+      "name": "appauth",
+      "version": "0.11.1",
+      "artifact": "appauth-0.11.1.pom",
+      "sha256": "f1d8f1cc0a94e0f6fdf74b8c094f0ff37887b91d5c12b2b7e7b0436f39c76c3d",
+      "method": "published-sha256",
+      "source": "https://repo.maven.apache.org/maven2/net/openid/appauth/0.11.1/appauth-0.11.1.pom.sha256"
     },
     {
       "group": "net.sf.jopt-simple",
@@ -11698,8 +12044,8 @@
   ],
   "lockfiles": {
     "settings-gradle.lockfile": "e58bb2ed80db9f829601a658d7c33b9802eb7d2191c31e79c28e01f14c225926",
-    "custodian-backend/gradle.lockfile": "2bc321e3b557de6a3abc77ba037c486cb6005de8ea5d1ef34ed98d9885baa3b9",
-    "android-wallet/gradle.lockfile": "aa5336e455fed4e78268a47fd0a5a1d90c15bc0952253e32c54eb0222f2bc2b7",
+    "custodian-backend/gradle.lockfile": "fb59d1d2b41ea6ca6d3adbedca5de4c4360b0afebe722bd32073788a8a3bee4f",
+    "android-wallet/gradle.lockfile": "8bac0b6c268f9c8f877c3e1076f3c38c59c4defa128ebb98a4f50e9bfcc09eb6",
     "web-portals/gradle.lockfile": "ccddcc15ac58b65dbab48feac7b6b0c28d1a054a295f905007ada36232695be2"
   },
   "reviewLimitation": "Single maintainer. Publisher hashes, module mappings and independent downloads establish consistency, not independent human review."

@@ -11,6 +11,7 @@ kotlin {
     }
     sourceSets {
         wasmJsMain.dependencies {
+            implementation(libs.kotlinx.browser)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.ui)

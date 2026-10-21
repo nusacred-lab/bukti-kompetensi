@@ -28,5 +28,9 @@ fun main() {
         requireNotNull(it.toIntOrNull()?.takeIf { port -> port in 1..65535 }) { "Invalid HTTP_PORT" }
     } ?: 18080
     val portalRoot = System.getenv("PORTAL_ROOT")?.let(::File)
-    embeddedServer(Netty, host = host, port = port) { stackProbe(portalRoot) }.start(wait = true)
+    val auth = OidcConfig.fromEnvironment()?.let(::OidcService)
+    embeddedServer(Netty, host = host, port = port) {
+        auth?.let { authRoutes(it) }
+        stackProbe(portalRoot)
+    }.start(wait = true)
 }

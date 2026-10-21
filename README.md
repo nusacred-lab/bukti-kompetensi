@@ -7,8 +7,10 @@ portals, Kotlin/Ktor/JDK 21 backend, Keycloak/PostgreSQL, and Exposed/SQLite.
 Holder keys and credentials remain on the server.
 
 P2 implementation has started. The repository now builds a minimal Ktor backend,
-Android debug wallet and Compose Web/Wasm portal. These are stack probes; login,
-credential operations and coordinated recovery are not implemented yet. See
+Android debug wallet and Compose Web/Wasm portal. The custodian now has real OIDC BFF and native PKCE session verification;
+credential operations and coordinated recovery are not implemented yet.
+See [P2 login proof](docs/P2-login-proof.md) for the passed private login tests
+and the remaining physical-device/prerelease checks. See
 [the P2 proof and reproduction steps](docs/P2-stack-proof.md). G2 remains open.
 Fork supply-chain acceptance is tracked in
 [waltid-identity](https://github.com/nusacred-lab/waltid-identity).

@@ -31,13 +31,18 @@ jobs:
       - name: Build JVM, Android and WebAssembly with strict dependency checks
         env:
           GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
-        run: ./gradlew :custodian-backend:test :custodian-backend:installDist :android-wallet:assembleDebug :web-portals:wasmJsBrowserDistribution --dependency-verification strict --no-daemon
+        run: ./gradlew :custodian-backend:test :custodian-backend:installDist :android-wallet:assembleDebug :android-wallet:lintDebug :web-portals:wasmJsBrowserDistribution --dependency-verification strict --no-daemon
       - name: Install pinned vulnerability scanner
         run: python3 ci/install_tool.py trivy "$RUNNER_TEMP/tools"
       - name: Scan actual JVM runtime dependencies
         run: '"$RUNNER_TEMP/tools/trivy" rootfs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --format json --output build/p2-runtime-scan.json custodian-backend/build/install/custodian-backend/lib'
       - name: Reject empty runtime scan coverage
         run: python3 ci/check_runtime_scan.py
+      - name: Scan the complete locked Android runtime graph
+        run: |
+          python3 ci/write_runtime_sbom.py --module android-wallet --configuration debugRuntimeClasspath --output build/android-runtime.cdx.json
+          "$RUNNER_TEMP/tools/trivy" sbom --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --format json --output build/android-runtime-scan.json build/android-runtime.cdx.json
+          python3 ci/check_runtime_scan.py build/android-runtime-scan.json build/android-runtime.cdx.json
       - name: Build and scan the complete application container
         run: |
           docker build -f deploy/Containerfile.custodian --build-arg SOURCE_REVISION="$GITHUB_SHA" -t competency-proof-stack-probe .
@@ -55,3 +60,6 @@ jobs:
             custodian-backend/build/reports/tests/test/
             build/p2-runtime-scan.json
             build/p2-container-scan.json
+            build/android-runtime.cdx.json
+            build/android-runtime-scan.json
+            android-wallet/build/reports/lint-results-debug.*
