@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -42,6 +44,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
 
+private class WalletHttpFailure(val status: Int, val path: String) : RuntimeException()
+
 class MainActivity : ComponentActivity() {
     private val network = Executors.newSingleThreadExecutor()
     private lateinit var authorization: AuthorizationService
@@ -51,6 +55,7 @@ class MainActivity : ComponentActivity() {
     private var busy by mutableStateOf(false)
     private var signedIn by mutableStateOf(false)
     private var scanning by mutableStateOf(false)
+    private var sessionExpiresAt by mutableStateOf(0L)
     private var pendingLink by mutableStateOf<String?>(null)
     private var preview by mutableStateOf<JSONObject?>(null)
     private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -72,7 +77,6 @@ class MainActivity : ComponentActivity() {
                 } else submit {
                     val session = request("/auth/native/session", "POST", JSONObject().put("ticket", pending)
                         .put("access_token", tokens.accessToken).put("id_token", tokens.idToken)).getString("session")
-                    store.save(session)
                     account(session)
                 }
             }
@@ -83,16 +87,34 @@ class MainActivity : ComponentActivity() {
         authorization = AuthorizationService(this)
         store = SessionStore(this)
         pendingLink = store.context()
-        intent?.data?.let { receiveLink(it.toString()) }
+        sessionExpiresAt = store.expiresAt()
+        if (savedInstanceState == null) consumePresentationIntent(intent)
+        else setIntent(Intent(intent).setData(null))
         // A lost in-flight transaction is cancelled rather than reconstructed without its nonce/state.
         setContent {
+            LaunchedEffect(sessionExpiresAt) {
+                if (sessionExpiresAt > 0) {
+                    delay(((sessionExpiresAt - System.currentTimeMillis() / 1000).coerceAtLeast(0)) * 1000)
+                    store.clearSession(); signedIn = false; preview = null; sessionExpiresAt = 0
+                    pendingLink = store.context()
+                    message = if (pendingLink != null) "Your session expired. Sign in to review your saved request."
+                        else "Your session expired. Sign in when you are ready to review a request."
+                }
+            }
             Column(Modifier.fillMaxSize().background(Color.White)
                 .windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(24.dp), Arrangement.spacedBy(20.dp)) {
                 BasicText("Competency Wallet", style = TextStyle(color = Color.Black, fontSize = 24.sp))
                 BasicText(message, style = TextStyle(color = Color.Black, fontSize = 16.sp))
                 if (scanning) {
                     QrScanner(this@MainActivity, this@MainActivity, Modifier.fillMaxWidth().height(280.dp),
-                        onCode = { scanning = false; receiveLink(it) },
+                        onCode = {
+                            scanning = false
+                            val supported = receiveLink(it)
+                            Log.i("WalletScan", if (supported) "Supported optical QR decoded" else "Unsupported optical QR decoded")
+                            if (supported) message = if (store.load() == null)
+                                "QR code recognized. Sign in to review your saved request."
+                                else "QR code recognized. Tap Review request to continue."
+                        },
                         onError = { scanning = false; message = "The camera is unavailable. Please open a wallet link." })
                     BasicText("Cancel scanning", Modifier.clickable { scanning = false }.padding(12.dp))
                 } else BasicText("Scan QR code", Modifier.clickable(enabled = !busy) {
@@ -160,8 +182,24 @@ class MainActivity : ComponentActivity() {
             try { work() } catch (failure: Exception) {
                 // Exception classes reveal transport failures without logging tokens, URLs or account data.
                 Log.w("WalletAuth", "Account request failed: ${failure.javaClass.simpleName}")
-                store.clearSession()
-                runOnUiThread { busy = false; signedIn = false; preview = null; message = "Your account could not be verified. Please sign in again." }
+                val existing = store.load()
+                var rejectedSession = failure is WalletHttpFailure && failure.status == 401
+                if (rejectedSession && failure is WalletHttpFailure &&
+                    failure.path.startsWith("/api/v1/wallet/") && existing != null) {
+                    // Invalid/expired requests must not log out an otherwise valid account.
+                    try { request("/auth/me", "GET", null, existing); rejectedSession = false }
+                    catch (probe: Exception) { rejectedSession = probe is WalletHttpFailure && probe.status == 401 }
+                }
+                if (rejectedSession) store.clearSession()
+                runOnUiThread {
+                    busy = false; preview = null
+                    if (rejectedSession) {
+                        signedIn = false; sessionExpiresAt = 0
+                        pendingLink = store.context()
+                        message = "Your session expired or was revoked. Sign in to continue." +
+                            if (pendingLink != null) " Your request is saved." else ""
+                    } else message = "The request is unavailable. Check your connection or scan a fresh QR code."
+                }
             } finally { if (releaseBusy) runOnUiThread { busy = false } }
         }
     }
@@ -189,21 +227,33 @@ class MainActivity : ComponentActivity() {
     }
     private fun account(session: String) {
         val user = request("/auth/me", "GET", null, session)
-        runOnUiThread { signedIn = true; message = "Signed in as ${user.getString("email")}." }
+        val expires = user.getLong("expires_at")
+        store.save(session, expires)
+        runOnUiThread { sessionExpiresAt = expires; signedIn = true; message = "Signed in as ${user.getString("email")}." }
     }
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        intent.data?.let { receiveLink(it.toString()) }
+        consumePresentationIntent(intent)
+    }
+    private fun consumePresentationIntent(incoming: Intent) {
+        val link = incoming.data?.toString()
+        // A previously consumed launch link must never overwrite a later camera scan on recreation.
+        setIntent(Intent(incoming).setData(null))
+        if (link != null) receiveLink(link)
     }
     override fun onResume() {
         super.onResume()
         if (::store.isInitialized) {
             val context = store.context()
             if (context != pendingLink) { pendingLink = context; preview = null }
+            if (signedIn && store.load() == null) {
+                signedIn = false; sessionExpiresAt = 0; preview = null
+                message = "Your session expired. Sign in to continue."
+            }
         }
     }
-    private fun receiveLink(value: String) {
-        try {
+    private fun receiveLink(value: String): Boolean {
+        return try {
             val uri = Uri.parse(value)
             check(value.length <= 8192 && uri.scheme == "https" && uri.authority == "wallet-p2.demo.inoerawan.id" &&
                 uri.path == "/present" && uri.fragment == null && uri.queryParameterNames == setOf("request_url") &&
@@ -211,7 +261,8 @@ class MainActivity : ComponentActivity() {
             check(!uri.getQueryParameter("request_url").isNullOrBlank())
             store.saveContext(value); pendingLink = value; preview = null
             message = "Presentation link received. Review it before sending."
-        } catch (_: Exception) { message = "This QR code is not a supported wallet link." }
+            true
+        } catch (_: Exception) { message = "This QR code is not a supported wallet link."; false }
     }
     private fun request(path: String, method: String, body: JSONObject?, session: String? = null): JSONObject {
         check(path in setOf("/auth/native/start", "/auth/native/session", "/auth/me", "/auth/logout",
@@ -232,7 +283,7 @@ class MainActivity : ComponentActivity() {
             val status = connection.responseCode
             if (status != 200) {
                 Log.w("WalletAuth", "Wallet response status: $status")
-                error("Wallet request rejected")
+                throw WalletHttpFailure(status, path)
             }
             val bytes = connection.inputStream.use { stream ->
                 val output = java.io.ByteArrayOutputStream()

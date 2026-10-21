@@ -113,6 +113,7 @@ fun Application.authRoutes(auth: OidcService) {
                 val session = withContext(Dispatchers.IO) { auth.session(opaque, channel) }
                 call.reply(mapOf("email" to session.email, "subject" to session.subject,
                     "csrf" to if (channel == "browser") session.csrf else null,
+                    "expires_at" to session.expires.epochSecond,
                     "wallet_access" to "unavailable_until_recovery_registry_is_proven"))
             }
         }

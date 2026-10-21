@@ -39,8 +39,20 @@ class SessionStore(context: Context) {
             String(cipher.doFinal(bytes.copyOfRange(12, bytes.size)), Charsets.UTF_8)
         }
     } catch (_: Exception) { prefs.edit().remove(name).commit(); null }
-    fun save(value: String) = saveRecord("session", value)
-    fun load(): String? = loadRecord("session")
+    fun save(value: String, expiresAt: Long) {
+        require(expiresAt > System.currentTimeMillis() / 1000)
+        saveRecord("session", org.json.JSONObject().put("token", value).put("expires", expiresAt).toString())
+    }
+    fun expiresAt(): Long = try {
+        loadRecord("session")?.let { org.json.JSONObject(it).getLong("expires") } ?: 0
+    } catch (_: Exception) { clearSession(); 0 }
+    fun load(): String? = try {
+        loadRecord("session")?.let {
+            val record = org.json.JSONObject(it)
+            if (record.getLong("expires") > System.currentTimeMillis() / 1000) record.getString("token")
+            else { clearSession(); null }
+        }
+    } catch (_: Exception) { clearSession(); null }
     fun clearSession() { prefs.edit().remove("session").commit() }
     fun saveContext(link: String) = saveRecord("context", org.json.JSONObject().put("link", link)
         .put("expires", System.currentTimeMillis() + 240_000).toString())

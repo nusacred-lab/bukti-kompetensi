@@ -166,3 +166,23 @@ verifying a domain, or passing private HTTP tests alone does not close G2.
 
 The provider is PostgreSQL-specific; changing the IdP database or Keycloak version
 requires repeating the guard, fencing and recovery proofs.
+
+
+## Scan sessions and Android restoration
+
+The P2 native client uses a bounded 900-second access-token lifetime; portal
+clients retain the realm default. Live IdP introspection and the registry gate
+still reject recovery/revocation immediately. There is no persisted IdP refresh
+token and no automatic extension of this session. `/auth/me` exposes its actual
+`expires_at`; the APK encrypts that expiry alongside its opaque session. Legacy
+local session records require a fresh login when the APK is updated.
+
+Expiry updates the UI without closing an active camera or losing a still-valid
+four-minute request context. A recognized QR explicitly tells the user to review
+or sign in. Optical decoding diagnostics record only a supported/unsupported
+event, never payloads, frames or account data. A consumed launch Intent is cleared;
+Activity restoration uses the encrypted current context instead of replaying an
+older launch link over a later scan. An invalid wallet request is checked against
+`/auth/me` before treating it as session revocation, so a request failure cannot
+silently sign out an otherwise valid account. Recovery and expired IdP sessions
+remain denied by the server.
