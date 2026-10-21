@@ -128,8 +128,24 @@ of the retained synthetic demo credential. The isolated verifier returned
 later passed. The early transport cause remains unconfirmed. Safe APK diagnostics
 log only exception class or HTTP status, never URLs, tokens or account data.
 
-G2 remains open until the physical camera/browser/credential and recovery journeys
-and all required prerelease acceptance evidence are complete. Building a scanner,
+The synthetic recovery email link was opened on the physical phone and a new
+password submitted there. The old native session was denied. Only the P2 candidate
+was then uninstalled and freshly installed, removing local application data and
+Keystore entries. The same account logged in through the HTTPS callback and
+presented its unchanged retained credential after explicit review/consent; the
+verifier returned `SUCCESSFUL`. Server-side credential bytes match the pre-recovery
+fingerprint. A real Chrome button opened the signed APK with the same HTTPS context
+encoded in the QR, without automatic consent. The test button uses Chrome's
+`intent:` syntax with HTTPS and no package override, allowing Android to resolve
+the verified domain.
+
+The camera preview uses CameraX's compatible TextureView mode to avoid a SurfaceView
+overlay covering sibling controls in the scrolling Compose layout. See the
+[official CameraX implementation-mode contract](https://developer.android.com/reference/androidx/camera/view/PreviewView.ImplementationMode).
+Optical camera decoding remains pending physical positioning of the phone.
+
+G2 remains open until the physical camera scan and all required prerelease
+acceptance evidence are complete. Building a scanner,
 verifying a domain, or passing private HTTP tests alone does not close G2.
 
 ## Implementation references

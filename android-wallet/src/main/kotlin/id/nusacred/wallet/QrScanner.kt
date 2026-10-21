@@ -27,7 +27,12 @@ import java.util.concurrent.atomic.AtomicBoolean
 /** Frames remain on device and are discarded immediately after decoding. */
 @Composable
 fun QrScanner(context: Context, owner: LifecycleOwner, modifier: Modifier, onCode: (String) -> Unit, onError: () -> Unit) {
-    val view = remember { PreviewView(context) }
+    val view = remember {
+        PreviewView(context).apply {
+            // TextureView follows Compose clipping and scrolling instead of overlaying sibling controls.
+            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+        }
+    }
     AndroidView(factory = { view }, modifier = modifier)
     DisposableEffect(view) {
         val worker = Executors.newSingleThreadExecutor()
