@@ -1,8 +1,9 @@
 # P2.3 login proof — 21 October 2026
 
 The custodian now implements browser BFF authorization-code + PKCE and the native
-AppAuth session-registration contract. This is a partial P2.3 proof: physical APK
-browser completion and the other two role-specific portal backends remain open.
+AppAuth session-registration contract. Physical APK browser completion is now
+proven. This remains a partial P2.3 proof: the other two role-specific portal
+backends remain open.
 Wallet access is still unavailable until the persistent registry/recovery work
 passes. No credential success stub or default wallet identity is introduced.
 
@@ -75,11 +76,21 @@ claim of APK binary, embedded-native-library or complete build-tool scanning.
 Five private runtime images also pass the existing image gate. Single-maintainer
 and pending remote-CI limitations remain.
 
-The auth and wallet prerelease ingress configuration is staged separately from
-the private stack. It permits only login/static assets, with admin, master realm,
-mailbox, password-change actions and credential paths denied. Activating this
-internet-reachable login surface requires the owner's explicit confirmation.
+The owner authorized public test login on 21 October 2026. The auth and wallet
+prerelease ingress is active separately from the private stack. It permits only
+login/static assets, with admin, master realm, mailbox, password-change actions
+and credential paths denied. Public and local ingress each pass 22 boundary
+checks; all 15 real-service login checks also pass over public HTTPS.
 The original four probe routes and historical walt.id networks are unchanged.
+
+The debug APK was installed on the physical Android 16 test phone. AppAuth opened
+the real Keycloak page in a system browser, the dedicated synthetic applicant
+signed in, and the redirect returned to the APK with a verified account session.
+An account check and full process restart both retained a usable opaque session.
+Native sign-out and its persistence across restart are checked separately in the
+private activation evidence. No holder credential operation or recovery completion
+is inferred from this login proof. Debug discovery diagnostics record only error
+type/code and exception class, never exception messages, passwords or tokens.
 
 References: [AppAuth](https://github.com/openid/AppAuth-Android),
 [Nimbus JOSE/JWT](https://connect2id.com/products/nimbus-jose-jwt),

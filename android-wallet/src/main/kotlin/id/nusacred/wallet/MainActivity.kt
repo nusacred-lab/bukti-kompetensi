@@ -2,6 +2,7 @@ package id.nusacred.wallet
 
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -105,6 +106,7 @@ class MainActivity : ComponentActivity() {
         AuthorizationServiceConfiguration.fetchFromIssuer(Uri.parse(BuildConfig.OIDC_ISSUER)) { config, error ->
             runOnUiThread {
                 if (config == null || error != null) {
+                    if (BuildConfig.DEBUG) Log.w("WalletAuth", "Discovery failed: type=${error?.type}, code=${error?.code}, cause=${error?.cause?.javaClass?.simpleName}")
                     ticket = null; busy = false; message = "Sign-in is temporarily unavailable."
                 } else {
                     val request = AuthorizationRequest.Builder(config, "android-wallet-p2", ResponseTypeValues.CODE,
