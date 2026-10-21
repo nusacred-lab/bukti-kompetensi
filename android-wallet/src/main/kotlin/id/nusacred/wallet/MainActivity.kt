@@ -157,7 +157,9 @@ class MainActivity : ComponentActivity() {
     private fun submit(releaseBusy: Boolean = true, work: () -> Unit) {
         busy = true
         network.execute {
-            try { work() } catch (_: Exception) {
+            try { work() } catch (failure: Exception) {
+                // Exception classes reveal transport failures without logging tokens, URLs or account data.
+                Log.w("WalletAuth", "Account request failed: ${failure.javaClass.simpleName}")
                 store.clearSession()
                 runOnUiThread { busy = false; signedIn = false; preview = null; message = "Your account could not be verified. Please sign in again." }
             } finally { if (releaseBusy) runOnUiThread { busy = false } }
@@ -227,7 +229,11 @@ class MainActivity : ComponentActivity() {
                 connection.setFixedLengthStreamingMode(bytes.size)
                 connection.outputStream.use { it.write(bytes) }
             }
-            check(connection.responseCode == 200)
+            val status = connection.responseCode
+            if (status != 200) {
+                Log.w("WalletAuth", "Wallet response status: $status")
+                error("Wallet request rejected")
+            }
             val bytes = connection.inputStream.use { stream ->
                 val output = java.io.ByteArrayOutputStream()
                 val buffer = ByteArray(4096)

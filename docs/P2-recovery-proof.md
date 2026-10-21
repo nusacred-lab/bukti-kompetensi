@@ -84,7 +84,10 @@ Unmanaged profile attributes are disabled and the commit marker is admin-only.
 
 An anonymous forgotten-password request sends the standard response and does not
 invoke the gate. Invalid or expired email tokens cannot lock an account. Public
-recovery/credential routing requires the separately staged infrastructure override.
+recovery/credential routing uses the separately approved infrastructure override,
+activated for P2 testing on 21 October 2026. Thirty public ingress checks and ten
+public HTTPS recovery checks passed, including retained-credential presentation
+accepted by the verifier. Physical APK acceptance remains separate.
 
 ## Reproduction and evidence
 
@@ -116,6 +119,14 @@ The signed candidate uses package `id.nusacred.wallet`, HTTPS App Links at
 with Android Keystore, expires after four minutes and requires explicit review
 and consent. Logout removes context and session. QR frames never leave the phone.
 The signing key/password and local backup remain in ignored private runtime.
+
+Physical candidate evidence on 21 October 2026 includes Android domain verification,
+actual HTTPS callback login through the system browser with PKCE, pending-context
+retention without automatic consent, and explicit disclosure review/presentation
+of the retained synthetic demo credential. The isolated verifier returned
+`SUCCESSFUL`. Early phone login attempts failed or stalled; a fresh browser flow
+later passed. The early transport cause remains unconfirmed. Safe APK diagnostics
+log only exception class or HTTP status, never URLs, tokens or account data.
 
 G2 remains open until the physical camera/browser/credential and recovery journeys
 and all required prerelease acceptance evidence are complete. Building a scanner,
