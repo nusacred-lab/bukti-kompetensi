@@ -13,7 +13,7 @@ enum class ExchangeState { PREVIEWED, ACCEPTED, EXECUTING, COMPLETED, DECLINED, 
 enum class OperationState { PENDING, DISPATCHED, COMPLETED, CANCELLED, RECONCILE_REQUIRED }
 enum class Decision { FULFILLED, NOT_FULFILLED, INCOMPLETE }
 enum class Reason { WAITING, VERIFIED, COMPETENCY_MISMATCH, ASSESSMENT_NOT_COMPETENT, UNTRUSTED_ISSUER,
-    INVALID_PROOF, CANCELLED, EXPIRED, DEPENDENCY_UNAVAILABLE, VERIFIER_SESSION_MISSING, RECONCILE_REQUIRED }
+    INVALID_PROOF, TRANSMISSION_REJECTED, CANCELLED, EXPIRED, DEPENDENCY_UNAVAILABLE, VERIFIER_SESSION_MISSING, RECONCILE_REQUIRED }
 data class ApiError(val code: String, val message: String, val correlationId: String, val retryable: Boolean)
 data class Page<T>(val items: List<T>, val offset: Int, val limit: Int, val nextOffset: Int?)
 data class JobInput(val title: String, val competencyCode: String, val assessmentResult: String = "competent")

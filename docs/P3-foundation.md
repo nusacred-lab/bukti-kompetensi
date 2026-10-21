@@ -95,3 +95,40 @@ P4–P8 acceptance work.
 
 Framework test behavior follows [Ktor 3.6 testing](https://ktor.io/docs/server-testing.html).
 The shared module follows [Kotlin platform sharing](https://kotlinlang.org/docs/multiplatform-share-on-platforms.html).
+
+## Gate audit corrections on 22 October 2026
+
+The follow-up audit found a negative transmission reported as completed, expired
+wallet work remaining pending, and an offer response outside its OpenAPI schema.
+The corrections are on `codex/p3-gate-corrections`; the original P3 CI evidence
+belongs to the earlier source and does not validate this follow-up commit.
+
+Registry schema 4 adds a nullable operation reason without replacing wallet or
+key references. An explicit upstream `transmission_success=false` persists
+`CANCELLED` with reason `TRANSMISSION_REJECTED`. A missing/non-boolean outcome
+requires reconciliation. Neither outcome may be dispatched again by a retry.
+Final operation and exchange states are committed together.
+
+An owned pending context reaching its TTL becomes `CANCELLED` with reason
+`EXPIRED`; its exchange state becomes `EXPIRED`. Polling returns that terminal
+result. Preview, consent, decline and dispatch return HTTP 410 for the expired
+owner context. Ownership is checked before expiry mutation. Completed and
+uncertain dispatched outcomes retain their result after the preview TTL.
+
+`OfferReservation` now includes the returned `expiresAt` field. Integration tests
+validate actual issuer HTTP responses against their schemas, including required
+fields, types, enum values and additional properties, and reject invalid fixtures.
+Wallet HTTP tests exercise explicit negative and ambiguous HTTP-200 upstream
+responses, retries without repeated transmission, exact TTL boundaries, expiry
+persistence, cross-account denial and migration from schema 3. Existing schema-1,
+recovery, organization and browser ownership regressions remain enabled.
+
+The corrected source passes 35 JVM tests, strict offline builds for three JVM
+distributions, Android debug APK/lint and Web/Wasm. Android lint remains at zero
+errors, 13 warnings and one hint. No dependency or lockfile change is required.
+Required remote checks must pass on this correction before it is merged; no
+active registry is upgraded by these local checks.
+
+Before activating schema 4, make a consistent registry backup. Schema-3 binaries
+reject schema 4, so rollback requires the matching old binary and pre-upgrade
+backup. Never start an old binary on the migrated database.

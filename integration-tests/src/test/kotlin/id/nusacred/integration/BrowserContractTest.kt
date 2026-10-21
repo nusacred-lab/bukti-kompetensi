@@ -42,6 +42,42 @@ class BrowserContractTest {
         assertEquals(setOf("code","message","correlationId","retryable"),error.keys)
         store.close()
     }
+    @Test fun `issuer HTTP responses obey schemas including offer expiry and reject invalid contract fixtures`() = testApplication {
+        val store = DomainStore(Files.createTempFile("p3-offer-contract-", ".sqlite"), "issuer")
+        val admin = Principal("admin", "issuer-a", setOf(Role.ISSUER_ADMIN), "issuer-session")
+        val guard = RequestGuard("https://issuer.example", { _, _ -> admin to "csrf" })
+        application { businessRoutes(store, guard) }
+        val assessment = client.post("/api/v1/assessments") {
+            header("Authorization", "Bearer valid"); header("Content-Type", "application/json")
+            header("Idempotency-Key", "contract-assessment-0001")
+            setBody("""{"candidateAccountId":"recipient","candidateId":"candidate","competencyCode":"CODE","assessmentResult":"competent"}""")
+        }
+        assertEquals(201, assessment.status.value)
+        val record = JSONObjectUtils.parse(assessment.bodyAsText())
+        ResponseSchema.response("/api/v1/assessments", "post", 201, record)
+        val offerPath = "/api/v1/assessments/${record["id"]}/offers"
+        val created = client.post(offerPath) {
+            header("Authorization", "Bearer valid"); header("Content-Type", "application/json")
+            header("Idempotency-Key", "contract-offer-key-0001"); setBody("{}")
+        }
+        assertEquals(202, created.status.value)
+        val offer = JSONObjectUtils.parse(created.bodyAsText())
+        fun validate(value: Map<String, Any?>) = ResponseSchema.response("/api/v1/assessments/{id}/offers", "post", 202, value)
+        validate(offer)
+        assertFailsWith<AssertionError> { validate(offer - "expiresAt") }
+        assertFailsWith<AssertionError> { validate(offer + ("expiresAt" to "tomorrow")) }
+        assertFailsWith<AssertionError> { validate(offer + ("state" to "COMPLETE")) }
+        assertFailsWith<AssertionError> { validate(offer + ("unexpected" to true)) }
+        val fetched = client.get("/api/v1/offers/${offer["id"]}") { header("Authorization", "Bearer valid") }
+        assertEquals(200, fetched.status.value)
+        ResponseSchema.response("/api/v1/offers/{id}", "get", 200, JSONObjectUtils.parse(fetched.bodyAsText()))
+        val retry = client.post(offerPath) {
+            header("Authorization", "Bearer valid"); header("Content-Type", "application/json")
+            header("Idempotency-Key", "contract-offer-key-0001"); setBody("{}")
+        }
+        assertEquals(offer, JSONObjectUtils.parse(retry.bodyAsText()))
+        store.close()
+    }
     @Test fun `APK and Web shared DTO fields match the OpenAPI schema`() {
         val spec=JSONObjectUtils.parse(Files.readString(java.nio.file.Path.of("../docs/openapi.json")))
         val components=spec["components"] as Map<*,*>
