@@ -41,14 +41,14 @@ class FoundationTest {
             assertEquals(404,assertFailsWith<ApiFailure> { s.result(principal("company-b",Role.CANDIDATE,"other"),id) }.status)
             assertEquals("INCOMPLETE",s.result(p,id)["decision"])
             s.trust(p,"did:web:issuer.example")
-            assertTrue(s.finalizeVerified(id,"did:web:issuer.example",true))
+            assertTrue(s.finalizeCredential(id,VerifiedCompetency("did:web:issuer.example","candidate",s.job("job")["competencyCode"] as String,"competent")))
             s.trust(p,null,hash("did:web:issuer.example"))
-            assertFalse(s.finalizeVerified(id,"did:web:untrusted.example",false))
+            assertFalse(s.finalizeCredential(id,VerifiedCompetency("did:web:untrusted.example","candidate","OTHER","competent")))
             assertEquals("FULFILLED",s.result(p,id)["decision"])
             assertEquals("FULFILLED",s.verification(p,"job","key-000000000002")["decision"])
             assertEquals(1L,s.result(p,id)["trustRevision"])
             val next=s.verification(p,"job","key-000000000003")["id"] as String
-            assertTrue(s.finalizeVerified(next,"did:web:issuer.example",true))
+            assertTrue(s.finalizeCredential(next,VerifiedCompetency("did:web:issuer.example","candidate",s.job("job")["competencyCode"] as String,"competent")))
             assertEquals("UNTRUSTED_ISSUER",s.result(p,next)["reason"])
         }
     }
@@ -117,7 +117,7 @@ class FoundationTest {
             now+=301
             assertEquals("EXPIRED",s.result(p,id)["reason"])
             assertEquals(true,s.result(p,id)["final"])
-            assertFalse(s.finalizeVerified(id,"did:web:issuer.example",true))
+            assertFalse(s.finalizeCredential(id,VerifiedCompetency("did:web:issuer.example","candidate",s.job("job")["competencyCode"] as String,"competent")))
             assertEquals("EXPIRED",s.result(p,id)["reason"])
         }
     }
@@ -129,7 +129,7 @@ class FoundationTest {
             val executor=java.util.concurrent.Executors.newFixedThreadPool(2)
             try {
                 val trust=executor.submit { barrier.await(); s.trust(p,"did:web:issuer.example") }
-                val evaluation=executor.submit { barrier.await(); s.finalizeVerified(id,"did:web:issuer.example",true) }
+                val evaluation=executor.submit { barrier.await(); s.finalizeCredential(id,VerifiedCompetency("did:web:issuer.example","candidate",s.job("job")["competencyCode"] as String,"competent")) }
                 trust.get(5,java.util.concurrent.TimeUnit.SECONDS); evaluation.get(5,java.util.concurrent.TimeUnit.SECONDS)
                 val result=s.result(p,id)
                 assertTrue((result["trustRevision"]==0L && result["decision"]=="NOT_FULFILLED") ||

@@ -43,7 +43,7 @@ fun main() {
         service
     }
     val wallet = System.getenv("WALLET_ORIGIN")?.let {
-        WalletService(requireNotNull(registry), WalletClient(it))
+        WalletService(requireNotNull(registry), WalletClient(it), id.nusacred.common.OfferReference.fromEnvironment())
     }
     val recoverySecret = System.getenv("RECOVERY_SECRET_FILE")?.let {
         java.nio.file.Files.readString(java.nio.file.Path.of(it)).trim().toByteArray(Charsets.US_ASCII)

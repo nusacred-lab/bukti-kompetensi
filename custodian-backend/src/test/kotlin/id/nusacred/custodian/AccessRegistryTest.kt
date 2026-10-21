@@ -63,6 +63,7 @@ class AccessRegistryTest {
                 it.execute("DROP TABLE audit")
                 it.execute("ALTER TABLE accounts DROP COLUMN fresh_flow_after_ms")
                 it.execute("ALTER TABLE pending_operations DROP COLUMN reason")
+                it.execute("DROP TABLE receiving_offers")
                 it.execute("PRAGMA user_version=1")
             }
         }

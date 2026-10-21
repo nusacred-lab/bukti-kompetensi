@@ -18,11 +18,11 @@ data class ApiError(val code: String, val message: String, val correlationId: St
 data class Page<T>(val items: List<T>, val offset: Int, val limit: Int, val nextOffset: Int?)
 data class JobInput(val title: String, val competencyCode: String, val assessmentResult: String = "competent")
 data class AssessmentInput(val candidateAccountId: String, val candidateId: String, val competencyCode: String, val assessmentResult: String)
-data class ExchangeInput(val reference: String)
+data class ExchangeInput(val reference: String, val credentialId: String? = null)
 data class ConsentInput(val previewHash: String, val consent: Boolean, val credentialId: String?, val disclosures: List<String>)
 data class OperationView(val id: String, val state: OperationState, val reason: Reason?)
 data class VerificationView(val id: String, val jobId: String, val decision: Decision, val reason: Reason,
-    val final: Boolean, val evaluatedAt: Long?, val trustRevision: Long?)
+    val final: Boolean, val evaluatedAt: Long?, val trustRevision: Long?, val requestUrl: String? = null)
 
 fun ExchangeState.canTransitionTo(next: ExchangeState): Boolean = when (this) {
     ExchangeState.PREVIEWED -> next in setOf(ExchangeState.ACCEPTED, ExchangeState.DECLINED, ExchangeState.EXPIRED)

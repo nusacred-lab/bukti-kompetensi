@@ -11,3 +11,10 @@ dependencies {
     testImplementation(libs.ktor.server.test)
     testImplementation(kotlin("test-junit"))
 }
+
+// Explicit private acceptance runner; excluded from ordinary unit tests and distributions.
+tasks.register<JavaExec>("realPolicyProof") {
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("id.nusacred.common.RealPolicyProof")
+}

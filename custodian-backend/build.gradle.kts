@@ -27,3 +27,10 @@ val sqliteNative by tasks.registering(Copy::class) {
 distributions.main {
     contents { from(sqliteNative) { into("native") } }
 }
+
+// Never runs during ordinary tests or CI; requires explicitly provisioned private fork services.
+tasks.register<JavaExec>("realBusinessProof") {
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("id.nusacred.custodian.RealBusinessProof")
+}

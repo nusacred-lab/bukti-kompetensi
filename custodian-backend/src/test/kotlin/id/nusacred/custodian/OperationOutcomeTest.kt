@@ -133,7 +133,7 @@ class OperationOutcomeTest {
             registry.savePreview(hash(token), "pending", "summary", now.plusSeconds(240).epochSecond, payload())
         }
         DriverManager.getConnection("jdbc:sqlite:$path").use { db ->
-            db.createStatement().use { it.execute("ALTER TABLE pending_operations DROP COLUMN reason"); it.execute("PRAGMA user_version=3") }
+            db.createStatement().use { it.execute("ALTER TABLE pending_operations DROP COLUMN reason"); it.execute("DROP TABLE receiving_offers"); it.execute("PRAGMA user_version=3") }
         }
         AccessRegistry(path) { now }.use { registry ->
             registry.registerSession("https://auth.example", "alice", "fresh-session", "fresh-sid", now.epochSecond, now.plusSeconds(1800).epochSecond)
