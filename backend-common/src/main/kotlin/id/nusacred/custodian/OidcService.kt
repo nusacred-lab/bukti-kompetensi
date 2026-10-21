@@ -41,6 +41,7 @@ data class OidcConfig(
     val clientId: String,
     val clientSecret: String,
     val nativeClientId: String = "android-wallet-p2",
+    val organizationAssignments: Map<String,String> = emptyMap(),
 ) {
     init {
         for (value in listOf(issuer, backchannelOrigin, portalOrigin)) {
@@ -50,6 +51,7 @@ data class OidcConfig(
         }
         require(URI(backchannelOrigin).host == URI(issuer).host)
         require(URI(backchannelOrigin).path.isEmpty() && URI(portalOrigin).path.isEmpty())
+        require(organizationAssignments.all { (subject,org) -> subject.isNotBlank() && org.matches(Regex("[A-Za-z0-9_-]{1,128}")) })
         require(clientSecret.length >= 32)
         require(clientId in setOf("custodian-bff-p2", "issuer-bff-p2", "company-bff-p2"))
     }
@@ -64,17 +66,23 @@ data class OidcConfig(
             val issuer = System.getenv("OIDC_ISSUER") ?: return null
             return OidcConfig(issuer, requireNotNull(System.getenv("OIDC_BACKCHANNEL_ORIGIN")),
                 requireNotNull(System.getenv("OIDC_PORTAL_ORIGIN")), System.getenv("OIDC_CLIENT_ID") ?: "custodian-bff-p2",
-                Files.readString(Path.of(requireNotNull(System.getenv("OIDC_CLIENT_SECRET_FILE")))).trim())
+                Files.readString(Path.of(requireNotNull(System.getenv("OIDC_CLIENT_SECRET_FILE")))).trim(),
+                organizationAssignments = System.getenv("OIDC_ORGANIZATION_ASSIGNMENTS_FILE")?.let { file ->
+                    val bytes = Files.readAllBytes(Path.of(file))
+                    require(bytes.size <= 65536)
+                    JSONObjectUtils.parse(String(bytes,Charsets.UTF_8)).mapValues { (_,value) -> value as? String ?: error("Invalid organization assignment") }
+                } ?: emptyMap())
         }
     }
 }
 
 data class LoginFlow(val nonce: String, val verifier: String, val binding: String, val expires: Instant)
 data class AppSession(val subject: String, val sid: String, val email: String, val accessToken: String,
-                      val expires: Instant, val channel: String, val csrf: String)
+                      val expires: Instant, val channel: String, val csrf: String,
+                      val roles: Set<String> = emptySet(), val organization: String? = null)
 
 /** IdP tokens stay memory-only; the registry enforces persistent recovery revisions. */
-class OidcService(val config: OidcConfig, private val registry: AccessRegistry? = null) {
+class OidcService(val config: OidcConfig, private val registry: OidcRegistry? = null) {
     private val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))
         .followRedirects(HttpClient.Redirect.NEVER).build()
     private val nativeFlows = ConcurrentHashMap<String, LoginFlow>()
@@ -196,7 +204,7 @@ class OidcService(val config: OidcConfig, private val registry: AccessRegistry? 
         if (authTime.toInstant().isBefore(started.minusSeconds(30)) || authTime.toInstant().isAfter(Instant.now())) throw AuthRejected()
         val requiredRole = if (channel == "native") "applicant" else config.browserRole
         val roles = token.getJSONObjectClaim("realm_access")?.get("roles") as? List<*>
-        if (roles?.contains(requiredRole) != true) throw AuthRejected()
+        if (roles?.contains(requiredRole) != true && !(channel == "browser" && config.clientId == "issuer-bff-p2" && roles?.contains("issuer-operator") == true)) throw AuthRejected()
         val atHash = id.getStringClaim("at_hash")
         val expectedHash = Base64.getUrlEncoder().withoutPadding().encodeToString(
             MessageDigest.getInstance("SHA-256").digest(access.toByteArray(Charsets.US_ASCII)).copyOf(16))
@@ -204,7 +212,7 @@ class OidcService(val config: OidcConfig, private val registry: AccessRegistry? 
         active(access, token.subject, sid)
         val session = AppSession(token.subject, sid, id.getStringClaim("email") ?: "", access,
             minOf(token.expirationTime.toInstant(), id.expirationTime.toInstant(), Instant.now().plusSeconds(1800)),
-            channel, randomToken())
+            channel, randomToken(), roles.filterIsInstance<String>().toSet(), config.organizationAssignments[token.subject])
         val opaque = randomToken()
         if (sessions.size >= 512) throw AuthRejected()
         registry?.registerSession(config.issuer, token.subject, hash(opaque), sid,
@@ -224,6 +232,10 @@ class OidcService(val config: OidcConfig, private val registry: AccessRegistry? 
         }
         registry?.authorize(key)
         return value
+    }
+    fun accountId(opaque: String, channel: String): String {
+        val value = session(opaque,channel)
+        return registry?.accountId(hash(opaque)) ?: hash(config.issuer + "\u0000" + value.subject)
     }
     fun logout(opaque: String) { registry?.revoke(hash(opaque)); sessions.remove(hash(opaque)) }
 }

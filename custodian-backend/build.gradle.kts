@@ -5,6 +5,8 @@ plugins {
 kotlin { jvmToolchain(21) }
 application { mainClass.set("id.nusacred.custodian.MainKt") }
 dependencies {
+    implementation(project(":backend-common"))
+    implementation(project(":shared-contracts"))
     implementation(libs.sqlite.jdbc)
     implementation(libs.nimbus.jose)
     implementation(libs.ktor.server.core)

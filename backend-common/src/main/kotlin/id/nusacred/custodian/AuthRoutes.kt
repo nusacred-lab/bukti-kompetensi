@@ -1,6 +1,9 @@
 package id.nusacred.custodian
 
 import com.nimbusds.jose.util.JSONObjectUtils
+import id.nusacred.common.api
+import id.nusacred.common.jsonBody
+import id.nusacred.common.RequestGuard
 import io.ktor.http.ContentType
 import io.ktor.http.Cookie
 import io.ktor.http.CookieEncoding
@@ -11,6 +14,7 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receiveStream
 import io.ktor.server.response.respondRedirect
 import io.ktor.server.response.respondText
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
@@ -53,13 +57,27 @@ private fun ApplicationCall.identity(): Pair<String, String> {
 }
 
 fun Application.authRoutes(auth: OidcService) {
+    val rate = RequestGuard.oidc(auth)
     routing {
         post("/auth/native/start") {
             call.guarded { call.reply(auth.startNative()) }
         }
         post("/auth/native/session") {
             call.guarded {
+                rate.rate("auth:"+call.request.local.remoteHost,30)
                 val values = call.body()
+                val opaque = withContext(Dispatchers.IO) {
+                    auth.finishNative(values["ticket"] as? String ?: throw AuthRejected(),
+                        values["access_token"] as? String ?: throw AuthRejected(),
+                        values["id_token"] as? String ?: throw AuthRejected())
+                }
+                call.reply(mapOf("session" to opaque))
+            }
+        }
+        post("/api/v1/sessions") {
+            call.api {
+                rate.rate("auth:"+call.request.local.remoteHost,30)
+                val values = call.jsonBody(setOf("ticket","access_token","id_token"))
                 val opaque = withContext(Dispatchers.IO) {
                     auth.finishNative(values["ticket"] as? String ?: throw AuthRejected(),
                         values["access_token"] as? String ?: throw AuthRejected(),
@@ -70,6 +88,7 @@ fun Application.authRoutes(auth: OidcService) {
         }
         get("/auth/start") {
             call.guarded {
+                rate.rate("auth:"+call.request.local.remoteHost,30)
                 val (binding, url) = auth.startBrowser()
                 call.cookie(FLOW_COOKIE, binding, 300)
                 call.respondRedirect(url)
@@ -77,6 +96,7 @@ fun Application.authRoutes(auth: OidcService) {
         }
         get("/auth/callback") {
             call.guarded {
+                rate.rate("auth:"+call.request.local.remoteHost,30)
                 val q = call.request.queryParameters
                 if (q.getAll("state")?.size != 1 || q.getAll("code")?.size != 1 || q.getAll("iss")?.size != 1 || q["iss"] != auth.config.issuer || q["error"] != null) throw AuthRejected()
                 val opaque = withContext(Dispatchers.IO) {
@@ -89,6 +109,7 @@ fun Application.authRoutes(auth: OidcService) {
         }
         get("/auth/account") {
             call.guarded {
+                rate.rate("auth:"+call.request.local.remoteHost,30)
                 val (opaque, channel) = call.identity()
                 if (channel != "browser") throw AuthRejected()
                 val session = withContext(Dispatchers.IO) { auth.session(opaque, channel) }
@@ -109,6 +130,7 @@ fun Application.authRoutes(auth: OidcService) {
         }
         get("/auth/me") {
             call.guarded {
+                rate.rate("auth:"+call.request.local.remoteHost,30)
                 val (opaque, channel) = call.identity()
                 val session = withContext(Dispatchers.IO) { auth.session(opaque, channel) }
                 call.reply(mapOf("email" to session.email, "subject" to session.subject,
@@ -119,6 +141,19 @@ fun Application.authRoutes(auth: OidcService) {
         }
         post("/auth/logout") {
             call.guarded {
+                rate.rate("auth:"+call.request.local.remoteHost,30)
+                val (opaque, channel) = call.identity()
+                val session = withContext(Dispatchers.IO) { auth.session(opaque, channel) }
+                if (channel == "browser" && (call.request.headers[HttpHeaders.Origin] != auth.config.portalOrigin ||
+                    call.request.headers["X-CSRF-Token"] != session.csrf)) throw AuthRejected()
+                auth.logout(opaque)
+                if (channel == "browser") call.cookie(SESSION_COOKIE, "", 0)
+                call.reply(mapOf("signed_out" to true))
+            }
+        }
+        delete("/api/v1/sessions/current") {
+            call.api {
+                rate.rate("auth:"+call.request.local.remoteHost,30)
                 val (opaque, channel) = call.identity()
                 val session = withContext(Dispatchers.IO) { auth.session(opaque, channel) }
                 if (channel == "browser" && (call.request.headers[HttpHeaders.Origin] != auth.config.portalOrigin ||

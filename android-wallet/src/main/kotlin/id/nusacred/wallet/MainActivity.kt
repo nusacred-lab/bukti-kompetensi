@@ -1,5 +1,7 @@
 package id.nusacred.wallet
 
+import id.nusacred.contracts.ApiContract
+
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -138,8 +140,8 @@ class MainActivity : ComponentActivity() {
                         submit {
                             val session = store.load() ?: error("Missing session")
                             check(store.context() == link)
-                            request("/api/v1/wallet/provision", "POST", JSONObject(), session)
-                            val response = request("/api/v1/wallet/preview", "POST", JSONObject().put("request_url",
+                            request("${ApiContract.PREFIX}/wallet/provision", "POST", JSONObject(), session)
+                            val response = request("${ApiContract.PREFIX}/wallet/preview", "POST", JSONObject().put("request_url",
                                 Uri.parse(link).getQueryParameter("request_url")), session)
                             runOnUiThread { preview = response; message = "Review the selected credential before sending." }
                         }
@@ -159,7 +161,7 @@ class MainActivity : ComponentActivity() {
                             submit {
                                 check(store.context() == link)
                                 check(current.getLong("expires_at") > System.currentTimeMillis() / 1000)
-                                val response = request("/api/v1/wallet/present", "POST", JSONObject()
+                                val response = request("${ApiContract.PREFIX}/wallet/present", "POST", JSONObject()
                                     .put("context_id", current.getString("context_id"))
                                     .put("summary_hash", current.getString("summary_hash")).put("consent", true), store.load())
                                 check(response.getBoolean("transmission_success"))
@@ -185,7 +187,7 @@ class MainActivity : ComponentActivity() {
                 val existing = store.load()
                 var rejectedSession = failure is WalletHttpFailure && failure.status == 401
                 if (rejectedSession && failure is WalletHttpFailure &&
-                    failure.path.startsWith("/api/v1/wallet/") && existing != null) {
+                    failure.path.startsWith("${ApiContract.PREFIX}/wallet/") && existing != null) {
                     // Invalid/expired requests must not log out an otherwise valid account.
                     try { request("/auth/me", "GET", null, existing); rejectedSession = false }
                     catch (probe: Exception) { rejectedSession = probe is WalletHttpFailure && probe.status == 401 }
@@ -266,7 +268,7 @@ class MainActivity : ComponentActivity() {
     }
     private fun request(path: String, method: String, body: JSONObject?, session: String? = null): JSONObject {
         check(path in setOf("/auth/native/start", "/auth/native/session", "/auth/me", "/auth/logout",
-            "/api/v1/wallet/provision", "/api/v1/wallet/preview", "/api/v1/wallet/present"))
+            "${ApiContract.PREFIX}/wallet/provision", "${ApiContract.PREFIX}/wallet/preview", "${ApiContract.PREFIX}/wallet/present"))
         val connection = URL(BuildConfig.WALLET_ORIGIN + path).openConnection() as HttpURLConnection
         try {
             connection.requestMethod = method

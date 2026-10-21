@@ -37,7 +37,9 @@ for entry in ledger["artifacts"]:
     reviewed[key] = entry["sha256"]
 assert reviewed == expected, "Every hash needs an exact review record"
 lock_names = {"settings-gradle.lockfile", "custodian-backend/gradle.lockfile",
-              "android-wallet/gradle.lockfile", "web-portals/gradle.lockfile"}
+              "android-wallet/gradle.lockfile", "web-portals/gradle.lockfile",
+              "backend-common/gradle.lockfile", "company-backend/gradle.lockfile",
+              "issuer-backend/gradle.lockfile", "shared-contracts/gradle.lockfile", "integration-tests/gradle.lockfile"}
 assert set(ledger["lockfiles"]) == lock_names
 for name, digest in ledger["lockfiles"].items():
     assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest, "Unreviewed lockfile: " + name

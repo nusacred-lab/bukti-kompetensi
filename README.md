@@ -11,7 +11,7 @@ account-to-wallet registry and guarded password recovery. Private real-service
 proofs cover revocation, concurrency, interrupted recovery, retained credentials
 and actual verifier acceptance. A signed Android candidate includes QR scanning
 and verified App Links. Physical credential/recovery journeys remain to be closed;
-G2 is still open. See [persistent recovery proof](docs/P2-recovery-proof.md),
+G2 passed for the synthetic prerelease demo on 22 October 2026; see the workspace P2 validation index for the final optical QR and recovery evidence. Earlier P2 documents retain their dated execution history. See [persistent recovery proof](docs/P2-recovery-proof.md),
 [login evidence](docs/P2-login-proof.md) and [initial stack proof](docs/P2-stack-proof.md).
 Fork supply-chain acceptance is tracked in
 [waltid-identity](https://github.com/nusacred-lab/waltid-identity).
@@ -39,3 +39,18 @@ and reviews dependency changes on pull requests. See SECURITY-PROJECT.md.
 Project code: Apache-2.0 (LICENSE). No official affiliation with walt.id.
 
 All repository work must use English; see [AGENTS.md](AGENTS.md).
+
+## P3 application foundation
+
+The application now includes `shared-contracts` (JVM/Wasm, also consumed by
+Android), `backend-common`, separate `issuer-backend` and `company-backend`
+distributions, and `integration-tests`. The existing custodian registry/recovery
+boundary remains in `custodian-backend`; OIDC/BFF code is shared through an
+explicit recovery-registry interface. The Keycloak SPI remains independently
+packaged as proven in P2.
+
+See [the API contract](docs/openapi.json) and [P3 validation](docs/P3-foundation.md)
+for ownership, role mapping, request limits, state transitions, migration and
+reproduction. Stable business wire enums use English. P2 diagnostic paths remain
+compatibility aliases for the proven candidate APK. Issuance/presentation
+reservations do not claim a completed P4 business flow.

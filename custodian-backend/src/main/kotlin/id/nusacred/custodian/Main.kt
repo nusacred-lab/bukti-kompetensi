@@ -52,7 +52,7 @@ fun main() {
         if (registry != null && recoverySecret != null) recoveryRoutes(registry,
             RecoveryAuthenticator(requireNotNull(System.getenv("OIDC_ISSUER")), recoverySecret))
         auth?.let { authRoutes(it) }
-        if (auth != null && wallet != null) walletRoutes(auth, wallet)
+        if (auth != null && wallet != null) { walletRoutes(auth, wallet); contractRoutes(auth,wallet) }
         stackProbe(portalRoot)
     }.start(wait = true)
 }

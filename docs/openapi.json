@@ -1,0 +1,4299 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Competency Proof application API",
+    "version": "1.0.0",
+    "description": "P3 foundation contract. P4 endpoints are explicitly marked and are not a claim of a working business credential flow. Legacy P2 auth/wallet paths remain temporary compatibility aliases."
+  },
+  "servers": [
+    {
+      "url": "https://wallet-p2.demo.inoerawan.id",
+      "description": "Wallet host; use the operation x-host for issuer/company origins."
+    }
+  ],
+  "x-runtime-limits": {
+    "contextTtlSeconds": 300,
+    "presentationPreviewTtlSeconds": 240,
+    "appSessionTtlSeconds": 1800,
+    "idpResetTtlSeconds": 600,
+    "bodyBytes": 32768,
+    "authenticatedRequestsPerMinute": 60,
+    "publicJobReadsPerMinute": 30,
+    "viewerStartsPerMinute": 10,
+    "viewerRequestsPerMinute": 30,
+    "maxViewerSessions": 512,
+    "polling": "Start at 2 seconds, exponential backoff capped at 15 seconds; never blindly retry sign/send."
+  },
+  "paths": {
+    "/api/v1/sessions": {
+      "post": {
+        "operationId": "post__sessions",
+        "summary": "Exchange a nonce-bound OIDC login ticket for an opaque native session",
+        "tags": [
+          "wallet"
+        ],
+        "x-host": "wallet",
+        "x-implementation-phase": "P3",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Required for browser mutation; exact configured origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Required with browser cookies."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NativeSessionInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/current": {
+      "delete": {
+        "operationId": "delete__sessions_current",
+        "summary": "Revoke the current session",
+        "tags": [
+          "wallet"
+        ],
+        "x-host": "wallet",
+        "x-implementation-phase": "P3",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Required for browser mutation; exact configured origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Required with browser cookies."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "operationId": "get__me",
+        "summary": "Read authenticated identity and role mapping",
+        "tags": [
+          "wallet"
+        ],
+        "x-host": "wallet",
+        "x-implementation-phase": "P3",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Identity"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/credentials": {
+      "get": {
+        "operationId": "get__wallet_credentials",
+        "summary": "Read own credential entries",
+        "tags": [
+          "wallet"
+        ],
+        "x-host": "wallet",
+        "x-implementation-phase": "P3",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "CANDIDATE"
+        ]
+      }
+    },
+    "/api/v1/wallet/credentials/{id}": {
+      "get": {
+        "operationId": "get__wallet_credentials_id",
+        "summary": "Read one own credential entry",
+        "tags": [
+          "wallet"
+        ],
+        "x-host": "wallet",
+        "x-implementation-phase": "P3",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Credential"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "CANDIDATE"
+        ]
+      }
+    },
+    "/api/v1/exchange-contexts": {
+      "post": {
+        "operationId": "post__exchange-contexts",
+        "summary": "Preview a trusted demo presentation reference",
+        "tags": [
+          "wallet"
+        ],
+        "x-host": "wallet",
+        "x-implementation-phase": "P3",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Required for browser mutation; exact configured origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Required with browser cookies."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExchangePreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "CANDIDATE"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExchangeInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/exchange-contexts/{id}/present": {
+      "post": {
+        "operationId": "post__exchange-contexts_id_present",
+        "summary": "Consent to exactly the previewed credential and disclosures",
+        "tags": [
+          "wallet"
+        ],
+        "x-host": "wallet",
+        "x-implementation-phase": "P3",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            },
+            "description": "Scoped to actor, organization, action and canonical payload. Reuse with changed input returns 409. Ambiguous dispatch is never retried."
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Required for browser mutation; exact configured origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Required with browser cookies."
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Operation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "CANDIDATE"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/exchange-contexts/{id}/accept": {
+      "post": {
+        "operationId": "post__exchange-contexts_id_accept",
+        "summary": "Reserve issuance consent; P4 receiving adapter required",
+        "tags": [
+          "wallet"
+        ],
+        "x-host": "wallet",
+        "x-implementation-phase": "P4",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            },
+            "description": "Scoped to actor, organization, action and canonical payload. Reuse with changed input returns 409. Ambiguous dispatch is never retried."
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Required for browser mutation; exact configured origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Required with browser cookies."
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Operation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "CANDIDATE"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/exchange-contexts/{id}/decline": {
+      "post": {
+        "operationId": "post__exchange-contexts_id_decline",
+        "summary": "Decline own pending context locally; no implicit upstream cancellation claim",
+        "tags": [
+          "wallet"
+        ],
+        "x-host": "wallet",
+        "x-implementation-phase": "P3",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Required for browser mutation; exact configured origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Required with browser cookies."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Declined"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "CANDIDATE"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operations/{id}": {
+      "get": {
+        "operationId": "get__operations_id",
+        "summary": "Read an operation owned by this account and app session",
+        "tags": [
+          "wallet"
+        ],
+        "x-host": "wallet",
+        "x-implementation-phase": "P3",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Operation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "CANDIDATE"
+        ]
+      }
+    },
+    "/api/v1/assessments": {
+      "post": {
+        "operationId": "post__assessments",
+        "summary": "Record a synthetic assessment bound to a recipient account",
+        "tags": [
+          "issuer"
+        ],
+        "x-host": "issuer",
+        "x-implementation-phase": "P3",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            },
+            "description": "Scoped to actor, organization, action and canonical payload. Reuse with changed input returns 409. Ambiguous dispatch is never retried."
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Required for browser mutation; exact configured origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Required with browser cookies."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mutation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "ISSUER_ADMIN",
+          "ISSUER_OPERATOR"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssessmentInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assessments/{id}/offers": {
+      "post": {
+        "operationId": "post__assessments_id_offers",
+        "summary": "Reserve an offer operation for an owned assessment",
+        "tags": [
+          "issuer"
+        ],
+        "x-host": "issuer",
+        "x-implementation-phase": "P3",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. Protocol dispatch remains P4; P3 only reserves durable work.",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            },
+            "description": "Scoped to actor, organization, action and canonical payload. Reuse with changed input returns 409. Ambiguous dispatch is never retried."
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Required for browser mutation; exact configured origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Required with browser cookies."
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferReservation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "ISSUER_ADMIN",
+          "ISSUER_OPERATOR"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/offers/{id}": {
+      "get": {
+        "operationId": "get__offers_id",
+        "summary": "Read offer state in own organization",
+        "tags": [
+          "issuer"
+        ],
+        "x-host": "issuer",
+        "x-implementation-phase": "P3",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Offer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "ISSUER_ADMIN",
+          "ISSUER_OPERATOR"
+        ]
+      }
+    },
+    "/api/v1/jobs/{id}": {
+      "put": {
+        "operationId": "put__jobs_id",
+        "summary": "Persist a job and its requirements",
+        "tags": [
+          "company"
+        ],
+        "x-host": "company",
+        "x-implementation-phase": "P3",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            },
+            "description": "Scoped to actor, organization, action and canonical payload. Reuse with changed input returns 409. Ambiguous dispatch is never retried."
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Required for browser mutation; exact configured origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Required with browser cookies."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Mutation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "COMPANY_ADMIN"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobInput"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "get__jobs_id",
+        "summary": "Read public job requirements without result or organization data",
+        "tags": [
+          "company"
+        ],
+        "x-host": "company",
+        "x-implementation-phase": "P3",
+        "x-ownership": "public",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. ",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/browser-session": {
+      "get": {
+        "operationId": "get__browser-session",
+        "summary": "Open an opaque result-viewer session; expires after 1800 seconds",
+        "tags": [
+          "company"
+        ],
+        "x-host": "company",
+        "x-implementation-phase": "P3",
+        "x-ownership": "public",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. ",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{id}/verification-sessions": {
+      "post": {
+        "operationId": "post__jobs_id_verification-sessions",
+        "summary": "Reserve a verification request with a snapshot of job rules",
+        "tags": [
+          "company"
+        ],
+        "x-host": "company",
+        "x-implementation-phase": "P3",
+        "x-ownership": "browser owner or company admin",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. Protocol dispatch remains P4; P3 only reserves durable work.",
+        "security": [
+          {
+            "viewerCookie": []
+          },
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            },
+            "description": "Scoped to actor, organization, action and canonical payload. Reuse with changed input returns 409. Ambiguous dispatch is never retried."
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Required for browser mutation; exact configured origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Required with browser cookies."
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Verification"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/verification-sessions/{id}": {
+      "get": {
+        "operationId": "get__verification-sessions_id",
+        "summary": "Read a result as the original browser or authorized company admin",
+        "tags": [
+          "company"
+        ],
+        "x-host": "company",
+        "x-implementation-phase": "P3",
+        "x-ownership": "browser owner or company admin",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. ",
+        "security": [
+          {
+            "viewerCookie": []
+          },
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Verification"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trusted-issuers": {
+      "get": {
+        "operationId": "get__trusted-issuers",
+        "summary": "List trust entries at a consistent revision",
+        "tags": [
+          "company"
+        ],
+        "x-host": "company",
+        "x-implementation-phase": "P3",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000,
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrustPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "COMPANY_ADMIN"
+        ]
+      },
+      "post": {
+        "operationId": "post__trusted-issuers",
+        "summary": "Add an issuer identity; duplicate identity is idempotent",
+        "tags": [
+          "company"
+        ],
+        "x-host": "company",
+        "x-implementation-phase": "P3",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Required for browser mutation; exact configured origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Required with browser cookies."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrustMutation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "COMPANY_ADMIN"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrustInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trusted-issuers/{id}": {
+      "delete": {
+        "operationId": "delete__trusted-issuers_id",
+        "summary": "Remove an issuer identity; repeated deletion is idempotent",
+        "tags": [
+          "company"
+        ],
+        "x-host": "company",
+        "x-implementation-phase": "P3",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Required for browser mutation; exact configured origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Required with browser cookies."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrustMutation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "COMPANY_ADMIN"
+        ]
+      }
+    },
+    "/internal/recoveries/begin": {
+      "post": {
+        "operationId": "recovery_begin",
+        "tags": [
+          "internal recovery"
+        ],
+        "summary": "Acknowledge authenticated begin recovery coordination",
+        "x-host": "wallet-private",
+        "x-implementation-phase": "P2",
+        "x-ownership": "authenticated Keycloak provider only; never public",
+        "security": [
+          {
+            "recoveryHmac": []
+          }
+        ],
+        "description": "4096-byte body maximum. HMAC-SHA256 over timestamp + newline + exact path + newline + exact body, base64url encoded. Timestamp within 30 seconds. Operation/revision replay checks are durable; a stale callback cannot reopen a newer recovery. See P2-recovery-proof.md for the IdP fencing and acknowledgement boundary.",
+        "parameters": [
+          {
+            "name": "X-Recovery-Time",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Recovery-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoveryBegin"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Durable acknowledgement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryAck"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No acknowledgement; keep the gate closed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/recoveries/complete": {
+      "post": {
+        "operationId": "recovery_complete",
+        "tags": [
+          "internal recovery"
+        ],
+        "summary": "Acknowledge authenticated complete recovery coordination",
+        "x-host": "wallet-private",
+        "x-implementation-phase": "P2",
+        "x-ownership": "authenticated Keycloak provider only; never public",
+        "security": [
+          {
+            "recoveryHmac": []
+          }
+        ],
+        "description": "4096-byte body maximum. HMAC-SHA256 over timestamp + newline + exact path + newline + exact body, base64url encoded. Timestamp within 30 seconds. Operation/revision replay checks are durable; a stale callback cannot reopen a newer recovery. See P2-recovery-proof.md for the IdP fencing and acknowledgement boundary.",
+        "parameters": [
+          {
+            "name": "X-Recovery-Time",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Recovery-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoveryComplete"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Durable acknowledgement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryAck"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No acknowledgement; keep the gate closed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "correlationId",
+          "retryable"
+        ]
+      },
+      "Empty": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "required": []
+      },
+      "NativeSessionInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ticket": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "access_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16384
+          },
+          "id_token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16384
+          }
+        },
+        "required": [
+          "ticket",
+          "access_token",
+          "id_token"
+        ]
+      },
+      "NativeSession": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "session"
+        ]
+      },
+      "SignedOut": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "signed_out": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "signed_out"
+        ]
+      },
+      "Identity": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "CANDIDATE",
+                "ISSUER_ADMIN",
+                "ISSUER_OPERATOR",
+                "WALLET_ADMIN",
+                "COMPANY_ADMIN"
+              ]
+            }
+          },
+          "organizationId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "accountId",
+          "roles",
+          "organizationId"
+        ]
+      },
+      "JobInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "competencyCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "assessmentResult": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "title",
+          "competencyCode",
+          "assessmentResult"
+        ]
+      },
+      "Job": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "competencyCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "assessmentResult": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "competencyCode",
+          "assessmentResult",
+          "revision"
+        ]
+      },
+      "Mutation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "operationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "id",
+          "operationId"
+        ]
+      },
+      "AssessmentInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "candidateAccountId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "candidateId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "competencyCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "assessmentResult": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "candidateAccountId",
+          "candidateId",
+          "competencyCode",
+          "assessmentResult"
+        ]
+      },
+      "TrustInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "identity": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          }
+        },
+        "required": [
+          "identity"
+        ]
+      },
+      "TrustMutation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "id",
+          "revision"
+        ]
+      },
+      "TrustPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "identity": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                }
+              },
+              "required": [
+                "id",
+                "identity"
+              ]
+            }
+          },
+          "offset": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nextOffset": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "items",
+          "offset",
+          "limit",
+          "nextOffset",
+          "revision"
+        ]
+      },
+      "Operation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "state": {
+            "enum": [
+              "PENDING",
+              "DISPATCHED",
+              "COMPLETED",
+              "CANCELLED",
+              "RECONCILE_REQUIRED"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "reason"
+        ]
+      },
+      "OfferReservation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "operationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "state": {
+            "const": "PENDING"
+          }
+        },
+        "required": [
+          "id",
+          "operationId",
+          "state"
+        ]
+      },
+      "Offer": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expiresAt": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "state": {
+            "enum": [
+              "PENDING",
+              "DISPATCHED",
+              "COMPLETED",
+              "RECONCILE_REQUIRED"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "expiresAt",
+          "state"
+        ]
+      },
+      "BrowserSession": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "csrf": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expiresAt": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "csrf",
+          "expiresAt"
+        ]
+      },
+      "Verification": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "jobId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "decision": {
+            "enum": [
+              "FULFILLED",
+              "NOT_FULFILLED",
+              "INCOMPLETE"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "final": {
+            "type": "boolean"
+          },
+          "evaluatedAt": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "trustRevision": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "jobId",
+          "decision",
+          "reason",
+          "final"
+        ]
+      },
+      "ExchangeInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "reference": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "reference"
+        ]
+      },
+      "ConsentInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "previewHash": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "consent": {
+            "const": true
+          },
+          "credentialId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "disclosures": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          }
+        },
+        "required": [
+          "previewHash",
+          "consent",
+          "credentialId",
+          "disclosures"
+        ]
+      },
+      "ExchangePreview": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "credentialId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "previewHash": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expiresAt": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "consentRequired": {
+            "const": true
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "recipient": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "credential_label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "issuer": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "disclosures": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                }
+              }
+            },
+            "required": [
+              "recipient",
+              "credential_label",
+              "issuer",
+              "disclosures"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "credentialId",
+          "previewHash",
+          "expiresAt",
+          "consentRequired",
+          "details"
+        ]
+      },
+      "Declined": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "const": "DECLINED"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "Credential": {
+        "type": "object",
+        "description": "Wallet2 credential entry owned by the authenticated wallet; no wallet/key selector is accepted."
+      },
+      "CredentialList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Credential"
+        }
+      },
+      "RecoveryAck": {
+        "type": "object",
+        "required": [
+          "operation",
+          "revision"
+        ],
+        "properties": {
+          "operation": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RecoveryError": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "RecoveryBegin": {
+        "type": "object",
+        "required": [
+          "issuer",
+          "subject",
+          "operation",
+          "idp_write_fenced"
+        ],
+        "properties": {
+          "issuer": {
+            "type": "string",
+            "format": "uri"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{32,128}$"
+          },
+          "idp_write_fenced": {
+            "const": true
+          }
+        }
+      },
+      "RecoveryComplete": {
+        "type": "object",
+        "required": [
+          "issuer",
+          "subject",
+          "operation",
+          "revision"
+        ],
+        "properties": {
+          "issuer": {
+            "type": "string",
+            "format": "uri"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{32,128}$"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "opaqueSession": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Opaque application session; not an IdP JWT or ID token."
+      },
+      "browserCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-nusacred-session"
+      },
+      "viewerCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-nusacred-viewer"
+      },
+      "recoveryHmac": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Recovery-Signature",
+        "description": "Internal HMAC only, secret file mount."
+      }
+    }
+  }
+}

@@ -1,0 +1,51 @@
+package id.nusacred.custodian
+
+import id.nusacred.common.*
+import id.nusacred.contracts.Role
+import io.ktor.server.application.*
+import io.ktor.server.routing.*
+import io.ktor.server.response.respondText
+
+/** Stable P3 routes coexist with the P2 APK endpoints during migration. */
+fun Application.contractRoutes(auth: OidcService, wallet: WalletService) {
+    val guard = RequestGuard.oidc(auth)
+    routing {
+        get("/api/v1/wallet/credentials/{id}") { call.api {
+            guard.identity(call,false).requireRole(Role.CANDIDATE)
+            val opaque = call.request.headers["Authorization"]?.removePrefix("Bearer ") ?: reject(403,"NATIVE_REQUIRED","Use the wallet application.")
+            call.respondText(wallet.credential(opaque,call.parameters["id"]!!),io.ktor.http.ContentType.Application.Json)
+        } }
+        get("/api/v1/me") { call.api {
+            val p = guard.identity(call,false)
+            call.reply(mapOf("accountId" to p.account,"roles" to p.roles.map { it.name },"organizationId" to p.organization))
+        } }
+        post("/api/v1/exchange-contexts") { call.api {
+            guard.identity(call,true).requireRole(Role.CANDIDATE)
+            val b = call.jsonBody(setOf("reference"))
+            val opaque = call.request.headers["Authorization"]?.removePrefix("Bearer ")
+                ?: reject(403,"NATIVE_REQUIRED","Use the wallet application.")
+            val preview = wallet.preview(opaque,b.text("reference",4096))
+            call.reply(mapOf("id" to preview["context_id"],"credentialId" to preview["credential_id"],"previewHash" to preview["summary_hash"],
+                "expiresAt" to preview["expires_at"],"consentRequired" to true,"details" to preview["details"]),201)
+        } }
+        post("/api/v1/exchange-contexts/{id}/present") { call.api {
+            guard.identity(call,true).requireRole(Role.CANDIDATE)
+            val b = call.jsonBody(setOf("previewHash","consent","credentialId","disclosures"))
+            if(b["consent"] != true) reject(400,"CONSENT_REQUIRED","Explicit consent is required.")
+            val disclosures = (b["disclosures"] as? List<*>)?.map { it as? String ?: reject(400,"INVALID_FIELD","Invalid disclosure.") }
+                ?: reject(400,"INVALID_FIELD","Invalid disclosures.")
+            val opaque = call.request.headers["Authorization"]?.removePrefix("Bearer ") ?: reject(403,"NATIVE_REQUIRED","Use the wallet application.")
+            call.reply(wallet.presentConsented(opaque,call.parameters["id"]!!,b.text("previewHash"),b.text("credentialId"),disclosures,call.idempotency()),202)
+        } }
+        post("/api/v1/exchange-contexts/{id}/decline") { call.api {
+            guard.identity(call,true).requireRole(Role.CANDIDATE); call.jsonBody(emptySet())
+            val opaque = call.request.headers["Authorization"]?.removePrefix("Bearer ") ?: reject(403,"NATIVE_REQUIRED","Use the wallet application.")
+            wallet.decline(opaque,call.parameters["id"]!!); call.reply(mapOf("state" to "DECLINED"))
+        } }
+        get("/api/v1/operations/{id}") { call.api {
+            guard.identity(call,false).requireRole(Role.CANDIDATE)
+            val opaque = call.request.headers["Authorization"]?.removePrefix("Bearer ") ?: reject(403,"NATIVE_REQUIRED","Use the wallet application.")
+            call.reply(wallet.operation(opaque,call.parameters["id"]!!))
+        } }
+    }
+}

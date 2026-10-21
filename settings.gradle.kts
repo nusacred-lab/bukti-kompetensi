@@ -8,3 +8,5 @@ dependencyResolutionManagement {
 }
 rootProject.name = "competency-proof"
 include(":custodian-backend", ":android-wallet", ":web-portals")
+
+include(":shared-contracts", ":backend-common", ":issuer-backend", ":company-backend", ":integration-tests")
