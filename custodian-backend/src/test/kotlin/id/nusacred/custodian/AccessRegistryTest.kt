@@ -17,6 +17,63 @@ class AccessRegistryTest {
         r.registerSession(issuer, subject, hash(token), randomToken(), at, Instant.now().plusSeconds(600).epochSecond)
         return hash(token)
     }
+    @Test fun `same second login requires a nonce flow issued after durable completion`() {
+        var time = Instant.ofEpochSecond(20_000, 100_000_000)
+        val file = path()
+        AccessRegistry(file) { time }.use { r ->
+            r.registerSession(issuer, "alice", "before", "old-sid", time.epochSecond, 30_000)
+            val operation = randomToken()
+            val revision = r.beginRecovery(issuer, "alice", operation)
+            r.completeRecovery(issuer, "alice", operation, revision)
+            val completion = time
+            time = time.plusMillis(100)
+            for (started in listOf(null, completion.minusMillis(1), completion, time.plusMillis(1))) {
+                assertFailsWith<AccessDenied> {
+                    r.registerSession(issuer, "alice", randomToken(), "unknown-old-sid", time.epochSecond, 30_000, started)
+                }
+            }
+            r.registerSession(issuer, "alice", "fresh", "fresh-sid", time.epochSecond, 30_000, time)
+            assertEquals("OPEN", r.authorize("fresh").gate)
+            assertFailsWith<AccessDenied> { r.authorize("before") }
+            // Reopening does not make an old same-second flow eligible.
+            assertFailsWith<AccessDenied> {
+                r.registerSession(issuer, "alice", randomToken(), "late-old", time.epochSecond, 30_000, completion)
+            }
+        }
+        AccessRegistry(file) { time }.use { r ->
+            assertFailsWith<AccessDenied> { r.authorize("fresh") }
+            r.registerSession(issuer, "alice", "after-restart", "new-sid", time.epochSecond, 30_000, time)
+            assertEquals("OPEN", r.authorize("after-restart").gate)
+        }
+    }
+
+    @Test fun `schema one migration preserves conservative recovery boundary and wallet`() {
+        var time = Instant.ofEpochSecond(20_000, 100_000_000)
+        val file = path()
+        AccessRegistry(file) { time }.use { r ->
+            r.registerSession(issuer, "alice", "before", "old", time.epochSecond, 30_000)
+            r.provision("before") { "retained-wallet" to "retained-key" }
+            val operation = randomToken(); val revision = r.beginRecovery(issuer, "alice", operation)
+            r.completeRecovery(issuer, "alice", operation, revision)
+        }
+        java.sql.DriverManager.getConnection("jdbc:sqlite:$file").use { db ->
+            db.createStatement().use {
+                it.execute("ALTER TABLE accounts DROP COLUMN fresh_flow_after_ms")
+                it.execute("PRAGMA user_version=1")
+            }
+        }
+        time = time.plusMillis(100)
+        AccessRegistry(file) { time }.use { r ->
+            assertFailsWith<AccessDenied> {
+                r.registerSession(issuer, "alice", "ambiguous", "same-second", time.epochSecond, 30_000, time)
+            }
+            time = time.plusSeconds(1)
+            r.registerSession(issuer, "alice", "fresh", "new", time.epochSecond, 30_000, time)
+            assertEquals("retained-wallet", r.binding("fresh")?.walletId)
+            assertEquals("retained-key", r.binding("fresh")?.keyId)
+        }
+    }
+
     @Test fun `identity uses issuer and subject and never email`() {
         AccessRegistry(path()).use { r ->
             val a = r.identify(issuer, "alice")

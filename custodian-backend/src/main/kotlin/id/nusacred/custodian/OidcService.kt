@@ -208,7 +208,7 @@ class OidcService(val config: OidcConfig, private val registry: AccessRegistry? 
         val opaque = randomToken()
         if (sessions.size >= 512) throw AuthRejected()
         registry?.registerSession(config.issuer, token.subject, hash(opaque), sid,
-            authTime.toInstant().epochSecond, session.expires.epochSecond)
+            authTime.toInstant().epochSecond, session.expires.epochSecond, started)
         sessions[hash(opaque)] = session
         return opaque
     }

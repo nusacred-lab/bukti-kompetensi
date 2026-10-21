@@ -8,7 +8,7 @@ proof, not a production acceptance claim.
 
 ## Access registry
 
-`AccessRegistry` owns versioned schema initialization, foreign keys, WAL, full
+`AccessRegistry` owns versioned schema initialization and migration, foreign keys, WAL, full
 synchronous commits, and the unique `(issuer, subject)` account constraint. Email
 never selects an account. A unique account binding reserves its operation before
 Wallet2 is called. Named key and credential stores carry the durable operation
@@ -70,10 +70,20 @@ and has no public listener.
 
 Every custodian application session registration and use checks the persistent gate and
 account revision. IdP issuer/audience/nonce/signature/role and live introspection
-checks also remain mandatory. After completion, `auth_time` must be strictly
-greater than the completion second. An old or unknown session in the same second
-is denied, and a future `auth_time` is rejected. The local IdP and backend share
-the same host clock. A legitimate new login may need to wait until the following second.
+checks also remain mandatory. Authentication after the completion second is fresh.
+When `auth_time` equals that second, access additionally requires the server's
+nonce-bound login flow to have started strictly after the durable millisecond
+completion boundary, within that same second. OIDC verifies the nonce, forces
+interactive login, rejects future authentication times and introspects the IdP
+session before registration. A flow started before or at completion cannot reopen
+the gate, including after another valid login opens it. A pre-existing ID token
+cannot bind itself to a new nonce. Unknown or ambiguous same-second flows fail
+closed. Both services share the host clock.
+
+Registry schema 2 adds the millisecond flow boundary transactionally. Migration
+from schema 1 retains its known recovery boundary at the end of the recorded
+second, so historical timestamp uncertainty never creates access. Wallet/key/
+credential bindings survive migration. Restart still revokes application sessions.
 
 Account/account-console clients and direct password/service-account grants are
 disabled. Email reset and authenticated required actions use the guard.

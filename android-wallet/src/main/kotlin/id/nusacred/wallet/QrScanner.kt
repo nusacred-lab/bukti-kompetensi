@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
@@ -33,7 +34,7 @@ fun QrScanner(context: Context, owner: LifecycleOwner, modifier: Modifier, onCod
             implementationMode = PreviewView.ImplementationMode.COMPATIBLE
         }
     }
-    AndroidView(factory = { view }, modifier = modifier)
+    AndroidView(factory = { view }, modifier = modifier.clipToBounds())
     DisposableEffect(view) {
         val worker = Executors.newSingleThreadExecutor()
         val closed = AtomicBoolean(false)

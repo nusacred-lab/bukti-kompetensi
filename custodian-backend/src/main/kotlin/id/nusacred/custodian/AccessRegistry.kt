@@ -16,7 +16,7 @@ data class WalletBinding(val operation: String, val state: String, val walletId:
 /** One custodian process owns this database. The monitor also serializes dispatch with recovery.
  * No database transaction stays open during an upstream call. Never deploy multiple replicas.
  */
-class AccessRegistry(path: Path) : AutoCloseable {
+class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) : AutoCloseable {
     private val db: Connection = DriverManager.getConnection("jdbc:sqlite:${path.toAbsolutePath()}")
     init {
         db.createStatement().use { s ->
@@ -27,7 +27,7 @@ class AccessRegistry(path: Path) : AutoCloseable {
         }
         transaction {
             val version = query("PRAGMA user_version") { it.getInt(1) }.single()
-            require(version in 0..1) { "Unsupported access registry schema" }
+            require(version in 0..2) { "Unsupported access registry schema" }
             if (version == 0) {
                 execute("""CREATE TABLE accounts(id TEXT PRIMARY KEY, issuer TEXT NOT NULL, subject TEXT NOT NULL,
                     revision INTEGER NOT NULL DEFAULT 0, gate TEXT NOT NULL DEFAULT 'OPEN'
@@ -46,6 +46,12 @@ class AccessRegistry(path: Path) : AutoCloseable {
                     payload_hash TEXT NOT NULL, expires INTEGER NOT NULL, state TEXT NOT NULL
                     CHECK(state IN ('PENDING','DISPATCHED','COMPLETED','CANCELLED','RECONCILE_REQUIRED')))""")
                 execute("PRAGMA user_version=1")
+            }
+            if (version < 2) {
+                execute("ALTER TABLE accounts ADD COLUMN fresh_flow_after_ms INTEGER NOT NULL DEFAULT -1")
+                // Older registries recorded seconds only; retain a conservative boundary for them.
+                execute("UPDATE accounts SET fresh_flow_after_ms=fresh_after*1000+999 WHERE fresh_after>=0")
+                execute("PRAGMA user_version=2")
             }
             // A crash after reserving or dispatching must never silently retry a side effect.
             execute("UPDATE wallet_bindings SET state='RECONCILE_REQUIRED' WHERE state='PROVISIONING'")
@@ -78,10 +84,16 @@ class AccessRegistry(path: Path) : AutoCloseable {
         return account(id)
     }
     @Synchronized fun registerSession(issuer: String, subject: String, tokenHash: String, sid: String,
-                                      authTime: Long, expires: Long): AccountAccess = transaction {
+                                      authTime: Long, expires: Long, loginStarted: Instant? = null): AccountAccess = transaction {
         val a = identify(issuer, subject)
-        // Strict greater-than rejects even an unknown old sid minted in the same second.
-        if (a.gate == "LOCKED" || authTime <= a.freshAfter || expires <= Instant.now().epochSecond) throw AccessDenied()
+        val completionMillis = query("SELECT fresh_flow_after_ms FROM accounts WHERE id=?", a.id) { it.getLong(1) }.single()
+        // Same-second authentication is safe only with a nonce-bound flow issued after durable completion.
+        // OIDC verifies that nonce, forces interactive login and introspects the resulting IdP session.
+        val sameSecondFresh = authTime == a.freshAfter && loginStarted != null &&
+            loginStarted.toEpochMilli() > completionMillis && !loginStarted.isAfter(now()) &&
+            authTime >= loginStarted.epochSecond
+        if (a.gate == "LOCKED" || authTime < a.freshAfter ||
+            (authTime == a.freshAfter && !sameSecondFresh) || expires <= now().epochSecond) throw AccessDenied()
         if (a.gate == "AWAITING_FRESH_LOGIN") execute("UPDATE accounts SET gate='OPEN' WHERE id=?", a.id)
         execute("INSERT INTO app_sessions(token_hash,account_id,sid,revision,expires) VALUES(?,?,?,?,?)",
             tokenHash, a.id, sid, a.revision, expires)
@@ -90,7 +102,7 @@ class AccessRegistry(path: Path) : AutoCloseable {
     @Synchronized fun authorize(tokenHash: String): AccountAccess {
         val a = query("""SELECT a.* FROM accounts a JOIN app_sessions s ON s.account_id=a.id
             WHERE s.token_hash=? AND s.revoked=0 AND s.revision=a.revision AND a.gate='OPEN' AND s.expires>?""",
-            tokenHash, Instant.now().epochSecond) {
+            tokenHash, now().epochSecond) {
             AccountAccess(it.getString("id"), it.getLong("revision"), it.getString("gate"), it.getLong("fresh_after"))
         }.singleOrNull() ?: throw AccessDenied()
         return a
@@ -120,7 +132,7 @@ class AccessRegistry(path: Path) : AutoCloseable {
         execute("UPDATE app_sessions SET revoked=1 WHERE account_id=?", a.id)
         execute("UPDATE pending_operations SET state='CANCELLED' WHERE account_id=? AND state='PENDING'", a.id)
         execute("INSERT INTO recovery_operations(id,account_id,revision,state,started) VALUES(?,?,?,'LOCKED',?)",
-            operation, a.id, revision, Instant.now().epochSecond)
+            operation, a.id, revision, now().epochSecond)
         revision
     }
     /** Completion follows confirmed IdP commit AND revocation. It only permits a fresh login. */
@@ -131,9 +143,10 @@ class AccessRegistry(path: Path) : AutoCloseable {
         if (a.revision != revision) throw AccessDenied()
         if (state == "COMPLETED") return@transaction // Duplicate never changes the freshness boundary or gate.
         if (a.gate != "LOCKED") throw AccessDenied()
-        val now = Instant.now().epochSecond
-        execute("UPDATE recovery_operations SET state='COMPLETED',completed=? WHERE id=?", now, operation)
-        execute("UPDATE accounts SET gate='AWAITING_FRESH_LOGIN',fresh_after=? WHERE id=?", now, a.id)
+        val completed = now()
+        execute("UPDATE recovery_operations SET state='COMPLETED',completed=? WHERE id=?", completed.epochSecond, operation)
+        execute("UPDATE accounts SET gate='AWAITING_FRESH_LOGIN',fresh_after=?,fresh_flow_after_ms=? WHERE id=?",
+            completed.epochSecond, completed.toEpochMilli(), a.id)
     }
     @Synchronized fun binding(tokenHash: String): WalletBinding? {
         val a = authorize(tokenHash)
@@ -169,7 +182,7 @@ class AccessRegistry(path: Path) : AutoCloseable {
     }
     @Synchronized fun prepare(tokenHash: String, id: String, payloadHash: String, expires: Long) {
         val a = authorize(tokenHash)
-        require(expires > Instant.now().epochSecond && expires <= Instant.now().plusSeconds(300).epochSecond)
+        require(expires > now().epochSecond && expires <= now().plusSeconds(300).epochSecond)
         execute("""INSERT INTO pending_operations(id,account_id,token_hash,revision,payload_hash,expires,state)
             VALUES(?,?,?,?,?,?,'PENDING')""", id, a.id, tokenHash, a.revision, payloadHash, expires)
     }
@@ -178,7 +191,7 @@ class AccessRegistry(path: Path) : AutoCloseable {
         val a = authorize(tokenHash)
         val changed = execute("""UPDATE pending_operations SET state='DISPATCHED' WHERE id=? AND account_id=?
             AND token_hash=? AND revision=? AND payload_hash=? AND expires>? AND state='PENDING'""",
-            id, a.id, tokenHash, a.revision, payloadHash, Instant.now().epochSecond)
+            id, a.id, tokenHash, a.revision, payloadHash, now().epochSecond)
         if (changed != 1) throw AccessDenied()
         try {
             val result = send()
