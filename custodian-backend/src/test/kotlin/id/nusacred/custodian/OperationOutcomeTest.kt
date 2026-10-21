@@ -29,6 +29,36 @@ class OperationOutcomeTest {
         setBody("""{"previewHash":"summary","consent":true,"credentialId":"credential-one","disclosures":[]}""")
     }
 
+    @Test fun `tampered consent selection and client supplied protocol context never dispatch`() = testApplication {
+        val now=Instant.now()
+        val registry=AccessRegistry(Files.createTempFile("p4-consent-tamper-", ".sqlite")) { now }
+        register(registry,now)
+        registry.savePreview(hash(token),"context","summary",now.plusSeconds(240).epochSecond,payload())
+        var calls=0
+        val upstream=WalletClient("http://wallet:7006") { calls++; error("Tampered consent must not call upstream") }
+        application { contractRoutes(WalletService(registry,upstream),guard()) }
+        val base=mapOf<String,Any?>("previewHash" to "summary","consent" to true,"credentialId" to "credential-one","disclosures" to emptyList<String>())
+        for(patch in listOf(mapOf("previewHash" to "changed"),mapOf("credentialId" to "another"),mapOf("disclosures" to listOf("extra")))) {
+            val response=client.post("/api/v1/exchange-contexts/context/present") {
+                native();header("Content-Type","application/json");header("Idempotency-Key",java.util.UUID.randomUUID().toString())
+                setBody(json(base+patch))
+            }
+            assertEquals(404,response.status.value)
+        }
+        for(field in listOf("requestUrl","keyId","recipient","accountId","session","revision")) {
+            for(action in listOf("present","accept")) {
+                val response=client.post("/api/v1/exchange-contexts/context/$action") {
+                    native();header("Content-Type","application/json");header("Idempotency-Key",java.util.UUID.randomUUID().toString())
+                    setBody(json(base+mapOf(field to "changed")))
+                }
+                assertEquals(400,response.status.value,field)
+            }
+        }
+        assertEquals(0,calls)
+        assertEquals("PENDING",registry.operation(hash(token),"context")["state"])
+        registry.close()
+    }
+
     @Test fun `HTTP 200 with rejected transmission remains a terminal failure on retry and polling`() = testApplication {
         val now = Instant.now()
         val path = Files.createTempFile("p3-transmission-", ".sqlite")
