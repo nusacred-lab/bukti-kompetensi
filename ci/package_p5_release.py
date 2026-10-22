@@ -22,7 +22,9 @@ root = Path(__file__).resolve().parents[1]
 assert not subprocess.check_output(['git', 'status', '--porcelain'], cwd=root).strip(), 'Commit the reviewed source before packaging'
 revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
 verified = subprocess.check_output([str(a.apksigner.resolve()), 'verify', '--verbose', '--print-certs', str(a.apk.resolve())], text=True)
-fingerprint = re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-f]+)', verified).group(1).upper()
+fingerprints = {v.upper() for v in re.findall(r'certificate SHA-256 digest:\s*([0-9a-fA-F]{64})', verified)}
+assert 'Number of signers: 1' in verified and len(fingerprints)==1, 'Require exactly one verified APK signer'
+fingerprint = fingerprints.pop()
 links = json.loads(a.assetlinks.read_text())
 entry = next(v for v in links if v['target']['package_name'] == 'id.nusacred.wallet')
 assert fingerprint in {s.replace(':', '').upper() for s in entry['target']['sha256_cert_fingerprints']}, 'APK certificate does not match App Links'
