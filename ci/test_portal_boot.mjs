@@ -40,6 +40,12 @@ for (const [host, brand] of [['lsp-nusantara', 'LSP Nusantara'], ['karya-instala
   assert.equal(h.disconnected(), true);
   assert.equal(h.events.has('unhandledrejection'), false);
 }
+// Compose may render through a surface outside the portal's ordinary DOM tree.
+const separateSurface = harness('karya-instalasi.demo.inoerawan.id');
+separateSurface.setReadyLabel();
+separateSurface.frames.shift()();
+separateSurface.frames.shift()();
+assert.equal(separateSurface.elements['portal-boot'].hidden, true, 'Mounted identity must work without a descendant canvas');
 const slow = harness('karya-instalasi.demo.inoerawan.id');
 slow.timers[0]();
 assert.equal(slow.elements['boot-retry'].hidden, false);
