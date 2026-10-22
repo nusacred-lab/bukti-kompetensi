@@ -13,6 +13,11 @@ require a separate review and approval. The review names the recipient, selected
 credential, shared information and expiry. A different credential creates a new
 bound preview. An expired, revoked or cancelled review cannot authorize a send.
 
+The protocol preview describes mandatory claims as objects. The custodian maps
+their exact paths to the native contract's string list and binds the full claim
+descriptors into the preview hash. Consent must return the same paths; unsupported
+selective or optional claims fail closed for this fixed competency profile.
+
 Only an opaque expiring session, link and operation reference persist locally,
 encrypted with an Android Keystore AES-GCM key. Credential contents and IdP tokens
 remain in memory. The APK stores no holder signing key. Backup and device-transfer

@@ -123,13 +123,22 @@ class WalletService(private val registry: AccessRegistry, private val upstream: 
             else candidates.singleOrNull { it["credentialId"] == selected } ?: throw AccessDenied()
         val query = chosen["queryId"] as? String ?: throw AccessDenied()
         val credential = chosen["credentialId"] as? String ?: throw AccessDenied()
-        val disclosures = chosen["disclosures"] as? List<*> ?: throw AccessDenied()
+        val disclosureDetails = chosen["disclosures"] as? List<*> ?: throw AccessDenied()
+        // The protocol preview describes mandatory claims as objects. The native
+        // consent contract binds their exact paths, rather than those objects.
+        val disclosures = disclosureDetails.map {
+            val claim = it as? Map<*,*> ?: throw AccessDenied()
+            if(claim["selectivelyDisclosable"] != false || claim["required"] != true || claim["selectable"] != false) throw AccessDenied()
+            (claim["path"] as? String)?.takeIf { path -> path.isNotBlank() && path.length <= 4096 && path.none(Char::isISOControl) }
+                ?: throw AccessDenied()
+        }
+        if(disclosures.size > 100 || disclosures.distinct().size != disclosures.size) throw AccessDenied()
         val recipient = p["clientId"] as? String ?: throw AccessDenied()
         val details = mapOf("recipient" to recipient, "credential_label" to (chosen["label"] ?: "Competency Proof"),
             "issuer" to chosen["issuer"], "disclosures" to disclosures)
         val id = randomToken()
         val summary = hash(json(mapOf("url" to url, "wallet" to b.walletId, "key" to b.keyId,
-            "query" to query, "credential" to credential, "details" to details)))
+            "query" to query, "credential" to credential, "details" to details, "claims" to disclosureDetails)))
         val expires = Instant.now().plusSeconds(240)
         registry.savePreview(hash(opaque), id, summary, expires.epochSecond, json(mapOf(
             "url" to url, "wallet" to b.walletId, "key" to b.keyId, "query" to query,

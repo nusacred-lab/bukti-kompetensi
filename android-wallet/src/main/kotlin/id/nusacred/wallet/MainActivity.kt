@@ -268,7 +268,7 @@ class MainActivity : ComponentActivity() {
             } else {
                 Label("Requested by",12,Palette.Muted)
                 Label("Company verification",17,weight=FontWeight.SemiBold)
-                Label(details.optString("recipient"),11,Palette.Muted)
+                Label("Requested through the NusaCred company portal.",13,Palette.Muted)
             }
         }
         if(!receive) {
