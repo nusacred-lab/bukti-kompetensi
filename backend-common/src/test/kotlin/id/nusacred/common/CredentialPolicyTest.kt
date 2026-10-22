@@ -26,7 +26,7 @@ class CredentialPolicyTest {
         }
     }
     @Test fun `numeric dates require integer seconds valid interval and current validity`() {
-        for((field,value) in listOf("exp" to now,"nbf" to now+1,"iat" to now+1,"exp" to -1L,"exp" to 1.8e9,"iat" to true,"nbf" to 0.5,"exp" to 253402300800L)) {
+        for((field,value) in listOf("exp" to now,"nbf" to now+1,"iat" to now+1,"exp" to -1L,"exp" to 1.8e9,"iat" to true,"nbf" to 0.5,"exp" to 253402300800L,"exp" to java.math.BigInteger("18446744075509551716"),"exp" to java.math.BigDecimal("1800000100.5"))) {
             assertFailsWith<ApiFailure>(field+value) { verifiedCompetency(info(claims().apply { put(field,value) }),"upstream",now) }
         }
         assertFailsWith<ApiFailure> { verifiedCompetency(info(claims().apply { put("vct","other") }),"upstream",now) }

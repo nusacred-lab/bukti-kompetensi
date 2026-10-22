@@ -85,8 +85,8 @@ internal fun verifiedCompetency(info: Map<String,Any>, expectedSession: String, 
     fun text(name: String): String = (claims[name] as? String)?.takeIf { it.isNotBlank() && it.length <= 2048 && it.none(Char::isISOControl) } ?: invalid()
     fun date(name: String): Long {
         val n = claims[name]
-        if(n !is Number || n is Float || n is Double) invalid()
-        return n.toLong().takeIf { it in 0..253402300799L } ?: invalid()
+        if(n !is Long && n !is Int) invalid()
+        return (n as Number).toLong().takeIf { it in 0..253402300799L } ?: invalid()
     }
     if(text("vct") != COMPETENCY_VCT) invalid()
     text("id")
