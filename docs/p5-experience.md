@@ -35,7 +35,9 @@ consumes its saved refresh token before dispatch, persists the rotated replaceme
 only after success, and never blindly retries a token after a lost response.
 `POST /api/v1/sessions/renew` accepts refreshed access/ID proofs only for the same
 subject, IdP sid, original authentication time and recovery revision. It rotates
-the opaque session and invalidates pending local reviews. A reset, revoked session,
+the opaque session and atomically transfers existing reviews, operation outcomes and
+idempotency records only within that same IdP login. Renewal never approves or
+dispatches an operation; the APK retrieves its safe status/review. A reset, revoked session,
 logout or backend restart cannot be bypassed by refresh. Backend renewal anchors
 are bounded and memory-only; restart deliberately requires a new interactive login.
 

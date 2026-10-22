@@ -5,6 +5,31 @@ import java.time.Instant
 import kotlin.test.*
 
 class ContextRestorationTest {
+    @Test fun `native renewal preserves pending and uncertain work only within the same login`() {
+        var now=Instant.parse("2026-10-22T00:00:00Z")
+        AccessRegistry(Files.createTempFile("renewal-operation-",".sqlite"),{now}).use { r ->
+            val authenticatedAt=now.epochSecond
+            r.registerSession("https://auth.example","alice","old","same-sid",authenticatedAt,authenticatedAt+300)
+            now=now.plusSeconds(200)
+            for(id in listOf("pending","uncertain")) r.savePreview("old",id,"summary",now.epochSecond+240,"{}")
+            val key=java.util.UUID.randomUUID().toString()
+            r.consent("old","uncertain","summary",key)
+            assertFailsWith<ReconciliationRequired> { r.dispatch("old","uncertain","summary") { error("Synthetic lost outcome") } }
+            now=now.plusSeconds(101)
+            for((token,sid) in listOf("next" to "same-sid","other" to "different-sid"))
+                r.registerSession("https://auth.example","alice",token,sid,authenticatedAt,now.epochSecond+300)
+            assertFailsWith<AccessDenied> { r.completeRenewal("old","other") }
+            assertFailsWith<AccessDenied> { r.authorize("old") }
+            r.completeRenewal("old","next")
+            assertFailsWith<AccessDenied> { r.authorizeRenewal("old") }
+            assertEquals("PENDING",r.operation("next","pending")["state"])
+            assertEquals("{}",r.preview("next","pending"))
+            assertEquals("RECONCILE_REQUIRED",r.operation("next","uncertain")["state"])
+            assertEquals("uncertain",r.consent("next","uncertain","summary",key))
+            assertFailsWith<AccessDenied> { r.dispatch("next","uncertain","summary") { error("Must never resend") } }
+            assertFailsWith<AccessDenied> { r.operation("other","pending") }
+        }
+    }
     @Test fun `review restoration returns only safe consent fields and cannot approve or cross sessions`() {
         var now=Instant.parse("2026-10-22T00:00:00Z")
         AccessRegistry(Files.createTempFile("portal-restore-",".sqlite"),{now}).use { registry ->

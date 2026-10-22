@@ -9,6 +9,7 @@ interface OidcRegistry {
     fun authorize(tokenHash: String): Any
     /** Renewal may outlive an access token, but never revocation or account recovery. */
     fun authorizeRenewal(tokenHash: String): Any
+    fun completeRenewal(previousHash:String,nextHash:String)
     fun accountId(tokenHash: String): String
     fun revoke(tokenHash: String)
 }

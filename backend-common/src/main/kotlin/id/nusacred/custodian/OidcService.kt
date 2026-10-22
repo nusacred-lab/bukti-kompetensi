@@ -188,7 +188,9 @@ class OidcService(val config: OidcConfig, private val registry: OidcRegistry? = 
         val bound=renewals[key]?.takeIf { it.until.isAfter(Instant.now()) } ?: throw AuthRejected()
         requireNotNull(registry).authorizeRenewal(key)
         val next=create(access,idToken,config.nativeClientId,bound.nonce,"native",bound.started,bound)
-        registry.revoke(key);sessions.remove(key);renewals.remove(key)
+        try { registry.completeRenewal(key,hash(next)) }
+        catch(e:Exception) { registry.revoke(hash(next));sessions.remove(hash(next));renewals.remove(hash(next));throw e }
+        sessions.remove(key);renewals.remove(key)
         return next
     }
     @Synchronized fun logoutNative(opaque:String) {

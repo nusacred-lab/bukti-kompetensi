@@ -137,6 +137,19 @@ class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) 
         return account(id)
     }
     @Synchronized override fun revoke(tokenHash: String) { execute("UPDATE app_sessions SET revoked=1 WHERE token_hash=?", tokenHash) }
+    @Synchronized override fun completeRenewal(previousHash:String,nextHash:String) = transaction {
+        val previous=authorizeRenewal(previousHash)
+        val next=authorize(nextHash)
+        val oldSid=query("SELECT sid FROM app_sessions WHERE token_hash=?",previousHash) { it.getString(1) }.single()
+        val newSid=query("SELECT sid FROM app_sessions WHERE token_hash=?",nextHash) { it.getString(1) }.single()
+        if(previousHash==nextHash || previous.id!=next.id || previous.revision!=next.revision || oldSid!=newSid) throw AccessDenied()
+        // This is rotation within the same IdP login, never a new login or recovery.
+        // Preserve durable outcomes and deduplication; do not dispatch or approve anything.
+        execute("UPDATE pending_operations SET token_hash=? WHERE token_hash=? AND account_id=? AND revision=?",
+            nextHash,previousHash,next.id,next.revision)
+        execute("UPDATE idempotency_keys SET session_hash=? WHERE session_hash=? AND account_id=?",nextHash,previousHash,next.id)
+        revoke(previousHash)
+    }
     @Synchronized fun <T> read(tokenHash: String, block: () -> T): T {
         authorize(tokenHash)
         return block()

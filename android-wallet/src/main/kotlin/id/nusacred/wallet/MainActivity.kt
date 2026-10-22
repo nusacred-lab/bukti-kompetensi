@@ -98,6 +98,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(expiresAt) {
                 if(expiresAt>0) {
                     delay(((expiresAt-System.currentTimeMillis()/1000).coerceAtLeast(0))*1000)
+                    while(busy) delay(200)
                     if(store.refreshToken()!=null) renewAuthentication()
                     else { generation++;store.clearSession();clearIdentity();inform("Your session has ended. Sign in again to continue.") }
                 }
@@ -193,7 +194,7 @@ class MainActivity : ComponentActivity() {
                     busy=false
                     submit { g ->
                         val next=obj("/api/v1/sessions/renew","POST",JSONObject().put("session",previous).put("access_token",tokens.accessToken).put("id_token",tokens.idToken)).getString("session")
-                        ui(g) { store.clearOperation();preview=null }
+                        ui(g) { preview=null }
                         account(next,g)
                         ui(g) { store.setRefresh(tokens.refreshToken!!,until) }
                     }
