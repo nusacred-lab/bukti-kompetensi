@@ -14,6 +14,6 @@ fun main() {
     embeddedServer(Netty, host = System.getenv("HTTP_HOST") ?: "127.0.0.1", port = System.getenv("HTTP_PORT")?.toInt() ?: 18080) {
         portalRoutes("issuer",System.getenv("PORTAL_ROOT")?.let { java.io.File(it) })
         authRoutes(auth)
-        businessRoutes(store,guard)
+        businessRoutes(store,guard,publicProfile=IssuerProfile.fromEnvironment())
     }.start(wait = true)
 }

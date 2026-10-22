@@ -4,9 +4,13 @@ import id.nusacred.contracts.Role
 import io.ktor.server.application.*
 import io.ktor.server.routing.*
 
-fun Application.businessRoutes(store: DomainStore, guard: RequestGuard) {
+fun Application.businessRoutes(store: DomainStore, guard: RequestGuard, publicProfile: IssuerProfile? = null, directory: IssuerDirectory = IssuerDirectory()) {
     routing {
         if (store.service == "issuer") {
+            get("/api/v1/issuer-profile") { call.api {
+                guard.rate("issuer-profile:"+call.request.local.remoteHost,60)
+                call.reply(publicProfile?.publicData() ?: reject(503,"PROFILE_UNAVAILABLE","The issuer has not published its profile yet."))
+            } }
             get("/api/v1/assessments") { call.api { call.reply(store.assessments(guard.identity(call,false))) } }
             get("/api/v1/offers/{id}/qr") { call.api {
                 val offer=store.offer(guard.identity(call,false),call.parameters["id"]!!)
@@ -55,9 +59,23 @@ fun Application.businessRoutes(store: DomainStore, guard: RequestGuard) {
                     ?: if(call.request.queryParameters[name] == null) default else reject(400,"INVALID_PAGE","Invalid pagination.")
                 call.reply(store.trusted(p,page("offset",0),page("limit",25)))
             } }
+            get("/api/v1/issuer-candidates") { call.api {
+                val p=guard.identity(call,false);store.requireCompany(p)
+                call.reply(mapOf("items" to listOf(directory.fetch().publicData())))
+            } }
+            post("/api/v1/issuer-reviews") { call.api {
+                val p=guard.identity(call,true);store.requireCompany(p)
+                val b=call.jsonBody(setOf("issuerId"));val key=call.idempotency()
+                call.reply(store.reviewIssuer(p,directory.fetch(b.text("issuerId")),key),201)
+            } }
+            get("/api/v1/issuer-reviews/{id}") { call.api {
+                call.reply(store.issuerReview(guard.identity(call,false),call.parameters["id"]!!))
+            } }
             post("/api/v1/trusted-issuers") { call.api {
-                val p = guard.identity(call,true); val b = call.jsonBody(setOf("identity"))
-                call.reply(store.trust(p,b.text("identity",2048),key=call.idempotency()),201)
+                val p=guard.identity(call,true);store.requireCompany(p)
+                val b=call.jsonBody(setOf("reviewId","verificationMethod","verificationNote","confirmed"));val key=call.idempotency()
+                val id=b.text("reviewId");store.issuerReview(p,id)
+                call.reply(store.approveIssuer(p,id,directory.fetch(),b.text("verificationMethod"),b.text("verificationNote",1000),b.text("confirmed"),key),201)
             } }
             delete("/api/v1/trusted-issuers/{id}") { call.api {
                 val p = guard.identity(call,true); call.reply(store.trust(p,null,call.parameters["id"]!!,call.idempotency()))

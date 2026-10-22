@@ -52,19 +52,31 @@ private class PortalState {
     var assessment by mutableStateOf("competent")
     var jobTitle by mutableStateOf("")
     var jobCode by mutableStateOf("DEMO-ELEC-001")
-    var issuerIdentity by mutableStateOf("")
+    var issuerProfile by mutableStateOf<Data?>(null)
+    var issuerCandidates by mutableStateOf<List<Data>>(emptyList())
+    var candidateProblem by mutableStateOf("")
+    var issuerReview by mutableStateOf<Data?>(null)
+    var verificationMethod by mutableStateOf("")
+    var verificationNote by mutableStateOf("")
+    var identityConfirmed by mutableStateOf(false)
+    val showIssuerProfile get()=service=="issuer" && window.location.search=="?view=issuer-profile"
     val keys=mutableMapOf<String,String>()
     val csrf get()=session?.s("csrf")
     val isPublic get()=service=="company" && (session==null || publicView)
     fun key(action:String)=keys.getOrPut(action,::newKey)
     suspend fun refresh() {
         when(service) {
-            "issuer" -> if(session!=null) assessments=api("/api/v1/assessments").list("items")
+            "issuer" -> {
+                if(showIssuerProfile) issuerProfile=api("/api/v1/issuer-profile")
+                else if(session!=null) assessments=api("/api/v1/assessments").list("items")
+            }
             "company" -> {
                 jobs=api("/api/v1/jobs").list("items")
                 if(session!=null && !publicView) {
                     results=api("/api/v1/verification-sessions").list("items")
                     val list=api("/api/v1/trusted-issuers");trust=list.list("items");trustRevision=list.n("revision").toInt()
+                    try { issuerCandidates=api("/api/v1/issuer-candidates").list("items");candidateProblem="" }
+                    catch(_:Exception) { issuerCandidates=emptyList();candidateProblem="The issuer's published profile is temporarily unavailable. Refresh to try again. Existing trust is unchanged." }
                 }
             }
             else -> if(session!=null) status=api("/api/v1/service-status")
@@ -77,6 +89,8 @@ private class PortalState {
         scope.launch { try { work() } catch(e:Exception) {
             if(e is PortalFailure && e.status==401 && !state.isPublic) { state.session=null;state.problem="Your session has ended. Sign in again to continue." }
             else state.problem=when {
+                e is PortalFailure && e.code=="ISSUER_PROFILE_CHANGED" -> "The issuer publication changed. Cancel this review and review the current profile before approving."
+                e is PortalFailure && e.code=="REVIEW_EXPIRED" -> "This issuer review expired. Cancel it and open a fresh review."
                 e is PortalFailure && e.status==400 -> "Check the form fields before trying again. No new record was saved."
                 e is PortalFailure && e.status==403 -> "Your account does not have access to this workspace."
                 e is PortalFailure && e.status==410 -> "This request has expired. Create a fresh request to continue."
@@ -90,7 +104,7 @@ private class PortalState {
     LaunchedEffect(Unit) {
         try {
             state.service=api("/api/v1/portal-config").s("service")
-            state.session=try { api("/api/v1/portal-session") } catch(e:PortalFailure) { if(e.status==401) null else throw e }
+            state.session=if(state.showIssuerProfile) null else try { api("/api/v1/portal-session") } catch(e:PortalFailure) { if(e.status==401) null else throw e }
             state.refresh()
             if(state.isPublic && currentId().isNotEmpty()) {
                 try { state.verification=api("/api/v1/verification-sessions/"+currentId()) } catch(_:Exception) { saveId("") }
@@ -101,7 +115,7 @@ private class PortalState {
     LaunchedEffect(state.session?.n("expiresAt")) {
         val expires=state.session?.n("expiresAt") ?: return@LaunchedEffect
         delay(((expires-now()).coerceAtLeast(0.0)*1000).toLong())
-        state.session=null;state.assessments=emptyList();state.results=emptyList();state.status=null
+        state.session=null;state.trust=emptyList();state.issuerReview=null;state.verificationNote="";state.assessments=emptyList();state.results=emptyList();state.status=null
         state.dialog="";state.qr=null;state.offer=null;state.keys.clear();state.verification=null;saveId("")
         state.problem="Your session has ended. Sign in again to continue."
     }
@@ -123,19 +137,22 @@ private class PortalState {
     BoxWithConstraints(Modifier.fillMaxSize().background(Palette.Paper)) {
         val availableHeight=maxHeight;val wide=maxWidth>900.dp;val contentPadding=if(wide) 36.dp else 20.dp
         Row(Modifier.fillMaxSize()) {
-            if(wide && !state.isPublic) Sidebar(state)
+            if(wide && !state.isPublic && !state.showIssuerProfile) Sidebar(state)
             Column(Modifier.weight(1f)) {
                 Row(Modifier.fillMaxWidth().background(Palette.White).padding(horizontal=contentPadding,vertical=18.dp),
                     horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
-                    if(!wide || state.isPublic) Brand() else Column(verticalArrangement=Arrangement.spacedBy(3.dp)) {
+                    if(!wide || state.isPublic || state.showIssuerProfile) Brand() else Column(verticalArrangement=Arrangement.spacedBy(3.dp)) {
                         Eyebrow(entity.role,Palette.Teal);Label(entity.legalName,13,Palette.Ink,FontWeight.Medium)
                     }
                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(14.dp)) {
                         if(wide) Pill("Synthetic demo")
+                        if(state.service=="issuer") Action(if(state.showIssuerProfile) { if(wide) "Certification workspace" else "Workspace" } else { if(wide) "Public issuer profile" else "Profile" },primary=false) {
+                            navigate(if(state.showIssuerProfile) "/" else "/?view=issuer-profile")
+                        }
                         if(state.session!=null) {
                             if(wide) Label(state.session!!.s("email"),12,Palette.Muted)
                             Action("Sign out",primary=false,enabled=!state.busy,icon="logout") { act {
-                                api("/auth/logout","POST","{}",state.csrf);state.session=null;state.dialog="";state.qr=null;state.offer=null
+                                api("/auth/logout","POST","{}",state.csrf);state.session=null;state.trust=emptyList();state.issuerReview=null;state.verificationNote="";state.dialog="";state.qr=null;state.offer=null
                                 state.verification=null;saveId("");state.results=emptyList();state.assessments=emptyList();state.status=null;state.success="You are signed out."
                             } }
                         } else Action(if(state.isPublic) "Company sign in" else "Sign in",icon="arrow") { navigate("/auth/start") }
@@ -152,6 +169,7 @@ private class PortalState {
                     if(state.success.isNotEmpty()) Notice(state.success)
                     when {
                         state.loading -> Card(Modifier.fillMaxWidth()) { EmptyState("Opening your workspace","Preparing a secure connection…","shield") }
+                        state.showIssuerProfile -> PublicIssuerProfile(state.issuerProfile)
                         state.isPublic -> PublicJobs(state,wide,::act)
                         state.session==null -> Welcome(state,wide)
                         state.service=="issuer" -> IssuerWorkspace(state,wide,::act)
@@ -345,6 +363,92 @@ private fun tabs(service:String)=when(service) {
     Notice("Your result belongs to this browser session. Other visitors cannot browse your result or the company's verification records.")
     if(s.session!=null) Action("Back to company workspace",primary=false) { s.publicView=false }
 }
+@Composable private fun IssuerProfileDetails(profile:Data) {
+    Pill("Self-published · Company verification required","warning")
+    Heading(profile.s("legalName"),22)
+    KeyValue("Organization role",profile.s("role"))
+    KeyValue("Published profile",profile.s("profileUrl"))
+    KeyValue("Certification scope",profile.s("scope"))
+    KeyValue("Demo competency code",profile.s("competencyCode"))
+    Rule()
+    Eyebrow("CRYPTOGRAPHIC IDENTITY")
+    Label(profile.s("identity"),12,Palette.Muted)
+    KeyValue("Identity fingerprint · SHA-256",profile.s("identityFingerprint"))
+    Notice(profile.s("disclaimer"))
+}
+@Composable private fun PublicIssuerProfile(profile:Data?) {
+    PageHeading("PUBLIC ISSUER PROFILE","Know who issues the proof.","Published by LSP Nusantara for employers reviewing its competency credentials. No account is required to view this page.")
+    Card(Modifier.fillMaxWidth()) {
+        if(profile==null) EmptyState("Profile unavailable","Refresh the page to retrieve the issuer's current publication.")
+        else IssuerProfileDetails(profile)
+    }
+    Card(Modifier.fillMaxWidth()) {
+        Heading("A company makes its own trust decision",20)
+        Label("Compare this organization and its identity with a contact or authoritative directory you already know. A valid signature proves control of a key; it does not establish accreditation.",14,Palette.Muted)
+        Label("This demonstration has no real accreditation record or certification contact. Use the demo walkthrough verification method when trying the approval flow.",13,Palette.Muted)
+        Action("Continue to Karya Instalasi",primary=false,icon="arrow") { navigate("https://karya-instalasi.demo.inoerawan.id/") }
+    }
+}
+@Composable private fun IssuerTrustWorkspace(s:PortalState,act:(suspend ()->Unit)->Unit) {
+    PageHeading("TRUST POLICY","Review the issuer. Then decide.","Karya Instalasi independently approves its credential issuers. LSP Nusantara publishes its own profile; the wallet provider does not make this decision.") {
+        Action("Refresh profiles",primary=false,enabled=!s.busy,icon="refresh") { act { s.refresh() } }
+    }
+    if(s.candidateProblem.isNotEmpty()) Notice(s.candidateProblem,true)
+    if(s.issuerReview==null) Card(Modifier.fillMaxWidth()) {
+        Eyebrow("01 / DISCOVER");Heading("Published issuer profiles",20)
+        Label("Configured official sources · Publication alone does not establish trust.",13,Palette.Muted)
+        s.issuerCandidates.forEach { issuer ->
+            Rule();Heading(issuer.s("displayName"),22);Label(issuer.s("legalName"),13,Palette.Muted)
+            KeyValue("Certification scope",issuer.s("scope"));Label(issuer.s("profileUrl"),12,Palette.Muted)
+            Pill("Awaiting company review","warning")
+            Action("Review issuer",enabled=!s.busy,icon="arrow") { act {
+                s.issuerReview=api("/api/v1/issuer-reviews","POST",body("issuerId" to issuer.s("id")),s.csrf,newKey())
+                s.verificationMethod="";s.verificationNote="";s.identityConfirmed=false
+            } }
+        }
+    }
+    s.issuerReview?.let { review ->
+        Card(Modifier.fillMaxWidth()) {
+            Eyebrow("02 / REVIEW");IssuerProfileDetails(review.obj("profile"))
+            Label("This review expires in ${((review.n("expiresAt")-s.time).coerceAtLeast(0.0)/60).toInt()} minutes. A changed publication requires a fresh review.",12,Palette.Muted)
+            Action("Open public LSP profile",primary=false,icon="arrow") { openExternal(review.obj("profile").s("profileUrl")) }
+        }
+        Card(Modifier.fillMaxWidth()) {
+            Eyebrow("03 / COMPANY APPROVAL");Heading("Record the basis of your decision",20)
+            Label("Choose the channel used to verify both the organization and its exact published identity.",13,Palette.Muted)
+            listOf("official-contact" to "Known official contact","authoritative-directory" to "Authoritative directory","demo-walkthrough" to "Demo walkthrough only").forEach { (id,label) ->
+                Action(label,primary=s.verificationMethod==id,enabled=!s.busy) { s.verificationMethod=id;s.identityConfirmed=false }
+            }
+            if(s.verificationMethod=="demo-walkthrough") Notice("Demo approval only. This records your review of the synthetic LSP profile and does not claim real-world identity verification.")
+            Field("Verification evidence / reference",s.verificationNote,{ s.verificationNote=it;s.identityConfirmed=false },hint="Record the channel, reference and how you matched the published identity (20–1,000 characters)")
+            Action(if(s.identityConfirmed) "Confirmed: organization and identity reviewed" else "Confirm organization and identity reviewed",primary=s.identityConfirmed,enabled=!s.busy,icon="check") { s.identityConfirmed=!s.identityConfirmed }
+            Label("Approval trusts this issuer's identity for new competency decisions under your job requirements. The published scope is descriptive. Existing final results retain their policy record.",12,Palette.Muted)
+            Action("Approve trust",enabled=!s.busy && s.identityConfirmed && s.verificationMethod.isNotBlank() && s.verificationNote.trim().length in 20..1000 && review.n("expiresAt")>s.time,icon="shield") { act {
+                val payload=body("reviewId" to review.s("id"),"verificationMethod" to s.verificationMethod,"verificationNote" to s.verificationNote.trim(),"confirmed" to "true")
+                api("/api/v1/trusted-issuers","POST",payload,s.csrf,s.key("approve:$payload"))
+                s.issuerReview=null;s.verificationNote="";s.identityConfirmed=false;s.refresh()
+                s.success="Trust approved by your company. The review and verification evidence have been recorded."
+            } }
+            Action("Cancel review",primary=false,enabled=!s.busy) { s.issuerReview=null;s.verificationNote="";s.identityConfirmed=false }
+        }
+    }
+    Card(Modifier.fillMaxWidth()) {
+        Heading("Your company's trusted issuers",20);Label("Policy revision ${s.trustRevision}",12,Palette.Muted)
+        if(s.trust.isEmpty()) EmptyState("No trusted issuer yet","Review a published issuer profile and record your verification before approving trust.","shield")
+        s.trust.forEach { issuer ->
+            Rule()
+            if(issuer.s("reviewStatus")=="REVIEWED") {
+                Heading(issuer.obj("profile").s("displayName"),20);Pill("Approved by your company","success")
+                KeyValue("Approved on",date(issuer.n("approvedAt")));KeyValue("Approved by · account ID",issuer.s("approvedBy"))
+                KeyValue("Verification method",issuer.s("verificationMethod"));KeyValue("Recorded evidence",issuer.s("verificationNote"))
+            } else Notice("Existing trust has no recorded profile review. Review the issuer above to record its provenance.",true)
+            Label(issuer.s("identity"),12,Palette.Muted)
+            Action("Remove issuer",primary=false,enabled=!s.busy) { act {
+                api("/api/v1/trusted-issuers/${issuer.s("id")}","DELETE",csrf=s.csrf,key=s.key("remove:${issuer.s("id")}:${s.trustRevision}"));s.refresh();s.success="Issuer removed. Existing final results and approval history are unchanged."
+            } }
+        }
+    }
+}
 @Composable private fun CompanyWorkspace(s:PortalState,wide:Boolean,act:(suspend ()->Unit)->Unit) {
     when(s.page) {
         "jobs" -> {
@@ -363,27 +467,7 @@ private fun tabs(service:String)=when(service) {
             }
             Action("View public opening",primary=false,icon="arrow") { s.publicView=true }
         }
-        "trust" -> {
-            PageHeading("TRUST POLICY","Choose whose proof you accept.","Updates apply to new decisions. Previously finalized results keep their original policy record.")
-            Card(Modifier.fillMaxWidth()) {
-                Heading("Add an issuer",20);Field("Verified issuer identity",s.issuerIdentity,{ s.issuerIdentity=it },hint="Paste the issuer's public DID")
-                Label("Use the cryptographic identity provided by the certifier. A display name alone does not establish trust.",12,Palette.Muted)
-                Action("Add trusted issuer",enabled=!s.busy && s.issuerIdentity.isNotBlank(),icon="plus") { act {
-                    val identity=s.issuerIdentity.trim();api("/api/v1/trusted-issuers","POST",body("identity" to identity),s.csrf,s.key("trust:$identity:${s.trustRevision}"))
-                    s.refresh();s.issuerIdentity="";s.success="Issuer added. New decisions use the updated trust policy."
-                } }
-            }
-            Card(Modifier.fillMaxWidth()) {
-                Heading("Trusted issuers",20);Label("Policy revision ${s.trustRevision}",12,Palette.Muted)
-                if(s.trust.isEmpty()) EmptyState("No trusted issuer yet","Add your certifier's verified identity before accepting its credentials.","shield")
-                s.trust.forEach { issuer ->
-                    Rule();Label(issuer.s("identity"),12,Palette.Muted)
-                    Action("Remove issuer",primary=false,enabled=!s.busy) { act {
-                        api("/api/v1/trusted-issuers/${issuer.s("id")}","DELETE",csrf=s.csrf,key=s.key("remove:${issuer.s("id")}:${s.trustRevision}"));s.refresh();s.success="Issuer removed. Existing final results are unchanged."
-                    } }
-                }
-            }
-        }
+        "trust" -> IssuerTrustWorkspace(s,act)
         "results" -> {
             PageHeading("VERIFICATION RECORDS","Every decision has a reason.","Results stay tied to their original opening, request and policy revision.") {
                 Action("Refresh records",primary=false,enabled=!s.busy,icon="refresh") { act { s.refresh() } }

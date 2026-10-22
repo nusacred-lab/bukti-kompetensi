@@ -22,7 +22,8 @@
     "viewerStartsPerMinute": 10,
     "viewerRequestsPerMinute": 30,
     "maxViewerSessions": 512,
-    "polling": "Start at 2 seconds, exponential backoff capped at 15 seconds; never blindly retry sign/send."
+    "polling": "Start at 2 seconds, exponential backoff capped at 15 seconds; never blindly retry sign/send.",
+    "issuerReviewTtlSeconds": 900
   },
   "paths": {
     "/api/v1/sessions": {
@@ -3219,14 +3220,14 @@
       },
       "post": {
         "operationId": "post__trusted-issuers",
-        "summary": "Add an issuer identity; duplicate identity is idempotent",
+        "summary": "Approve trust from an owned, current issuer review with verification evidence",
         "tags": [
           "company"
         ],
         "x-host": "company",
-        "x-implementation-phase": "P3",
+        "x-implementation-phase": "P5",
         "x-ownership": "authenticated",
-        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. ",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token.  The server re-fetches the configured issuer profile over verified HTTPS and rejects changed or expired reviews. Raw identity input is rejected. Approval records actor, organization, profile snapshot, method, evidence and timestamp. The descriptive published scope does not add a per-issuer claim filter; normal job and credential policies still apply.",
         "security": [
           {
             "browserCookie": []
@@ -4978,6 +4979,595 @@
           }
         }
       }
+    },
+    "/api/v1/issuer-profile": {
+      "get": {
+        "operationId": "get__issuer-profile",
+        "summary": "Read the self-published LSP profile without signing in",
+        "tags": [
+          "issuer"
+        ],
+        "x-host": "issuer",
+        "x-implementation-phase": "P5",
+        "x-ownership": "public",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. ",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuerProfile"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/v1/issuer-candidates": {
+      "get": {
+        "operationId": "get__issuer-candidates",
+        "summary": "Discover the configured public issuer source; never auto-trust it",
+        "tags": [
+          "company"
+        ],
+        "x-host": "company",
+        "x-implementation-phase": "P5",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuerCandidates"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "COMPANY_ADMIN"
+        ]
+      }
+    },
+    "/api/v1/issuer-reviews": {
+      "post": {
+        "operationId": "post__issuer-reviews",
+        "summary": "Open an actor- and organization-bound profile review for 15 minutes",
+        "tags": [
+          "company"
+        ],
+        "x-host": "company",
+        "x-implementation-phase": "P5",
+        "x-ownership": "authenticated",
+        "description": "Fetch only the configured exact issuer endpoint over HTTPS, snapshot the profile, and bind the review to the company administrator. Browser Origin and X-CSRF-Token and Idempotency-Key are required.",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Required for browser mutation; exact configured origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Required with browser cookies."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,128}$"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuerReview"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "COMPANY_ADMIN"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssuerReviewInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/issuer-reviews/{id}": {
+      "get": {
+        "operationId": "get__issuer-reviews_id",
+        "summary": "Retrieve an owned issuer review",
+        "tags": [
+          "company"
+        ],
+        "x-host": "company",
+        "x-implementation-phase": "P5",
+        "x-ownership": "authenticated",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. ",
+        "security": [
+          {
+            "browserCookie": []
+          },
+          {
+            "opaqueSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuerReview"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "COMPANY_ADMIN"
+        ]
+      }
     }
   },
   "components": {
@@ -5223,14 +5813,34 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "identity": {
+          "reviewId": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 2048
+            "maxLength": 128
+          },
+          "verificationMethod": {
+            "type": "string",
+            "enum": [
+              "official-contact",
+              "authoritative-directory",
+              "demo-walkthrough"
+            ]
+          },
+          "verificationNote": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 1000
+          },
+          "confirmed": {
+            "type": "string",
+            "const": "true"
           }
         },
         "required": [
-          "identity"
+          "reviewId",
+          "verificationMethod",
+          "verificationNote",
+          "confirmed"
         ]
       },
       "TrustMutation": {
@@ -5245,6 +5855,11 @@
           "revision": {
             "type": "integer",
             "format": "int64"
+          },
+          "approvalId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
           }
         },
         "required": [
@@ -5271,11 +5886,58 @@
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 2048
+                },
+                "approvedBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "approvedAt": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "verificationMethod": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "verificationNote": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "profile": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/IssuerProfile"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "reviewStatus": {
+                  "type": "string",
+                  "enum": [
+                    "LEGACY_APPROVAL",
+                    "REVIEWED"
+                  ]
                 }
               },
               "required": [
                 "id",
-                "identity"
+                "identity",
+                "approvedBy",
+                "approvedAt",
+                "verificationMethod",
+                "verificationNote",
+                "profile",
+                "reviewStatus"
               ]
             }
           },
@@ -5956,6 +6618,153 @@
           }
         },
         "additionalProperties": false
+      },
+      "IssuerProfile": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "legalName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "role": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "profileUrl": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "sourceUrl": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "identity": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "identityFingerprint": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "competencyCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "scope": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "contactUrl": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "publicationStatus": {
+            "type": "string",
+            "const": "SELF_PUBLISHED"
+          },
+          "disclaimer": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          }
+        },
+        "required": [
+          "id",
+          "legalName",
+          "displayName",
+          "role",
+          "profileUrl",
+          "sourceUrl",
+          "identity",
+          "identityFingerprint",
+          "competencyCode",
+          "scope",
+          "contactUrl",
+          "publicationStatus",
+          "disclaimer"
+        ]
+      },
+      "IssuerCandidates": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssuerProfile"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "IssuerReviewInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "issuerId": {
+            "type": "string",
+            "enum": [
+              "lsp-nusantara"
+            ]
+          }
+        },
+        "required": [
+          "issuerId"
+        ]
+      },
+      "IssuerReview": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "profile": {
+            "$ref": "#/components/schemas/IssuerProfile"
+          },
+          "profileHash": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "reviewedAt": {
+            "type": "integer"
+          },
+          "expiresAt": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "profile",
+          "profileHash",
+          "reviewedAt",
+          "expiresAt"
+        ]
       }
     },
     "securitySchemes": {

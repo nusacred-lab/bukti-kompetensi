@@ -143,3 +143,40 @@ HTML, APIs, login, credential responses, errors and unversioned paths retain
 `no-store`. No service worker or browser storage of personal data is introduced.
 Existing compiled JVM/Wasm outputs can be reused when only these public resources
 change; normal CI still compiles the full project before image packaging.
+
+## Public issuer discovery and company approval
+
+The LSP publishes `/?view=issuer-profile` and anonymous `GET /api/v1/issuer-profile`.
+Its public DID comes from the issuer's existing public identity file; private key
+configuration is never mounted into the portal backend. The profile explicitly
+states that it is self-published and synthetic, with no real accreditation claim.
+The wallet provider neither publishes this profile nor chooses company trust.
+
+In the company workspace, **Trusted issuers → Review issuer** retrieves the LSP
+publication from a configured exact HTTPS endpoint. The company backend validates
+TLS, rejects redirects and arbitrary source URLs, and bounds the response. A review
+is stored for 15 minutes and bound to its administrator and organization. Discovery
+and review do not change trust. **Approve trust** requires a verification method,
+20–1,000 character evidence note, and explicit confirmation of the organization
+and exact identity. Use **Demo walkthrough only** for the synthetic organizations;
+real verification requires a known independent contact or authoritative directory.
+A self-published profile, HTTPS, or a valid credential signature is insufficient
+to establish real accreditation.
+
+Approval re-fetches the publication and rejects a changed profile or expired
+review. The database records its profile snapshot/hash, approving account,
+organization, method, evidence and time, together with a trust revision and audit
+event. Retries are idempotent; another administrator or organization cannot use
+the review. There is no raw-DID browser/API shortcut. Existing trust entries are
+retained with a visible **review needed** notice until reviewed. Removing trust
+retains approval/audit history and never changes finalized verification results.
+Published scope is descriptive; approval currently trusts the exact issuer identity
+under the existing competency type and job policies, not a separate per-issuer
+competency allowlist. A changed key must be reviewed as a new identity; approving
+it does not silently remove an old trusted key.
+
+Application database migration 3 adds review and approval records plus a nullable
+approval reference on trust entries. Back up issuer/company stores consistently
+before activation. Old binaries reject the newer schema; rollback requires their
+matching pre-migration snapshots, not merely old container images. No Android,
+Keycloak session policy, issuer signing key or holder key changes are required.
