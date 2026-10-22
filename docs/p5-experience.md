@@ -123,3 +123,23 @@ pipeline and acceptance remain P6 work.
 G5 requires actual browser and physical Android journeys, including optical QR,
 phone links, lifecycle, logout and backup/restore. JVM/API tests alone cannot close
 this gate. Record observed results and any pending physical interaction separately.
+
+
+## Initial page delivery
+
+The initial HTML includes an accessible loading screen before WebAssembly starts.
+A small public bootstrap script applies the destination entity branding, keeps the
+screen visible until Compose publishes its mounted workspace identity, and removes
+it after two animation frames. Slow/offline/script failures show a generic retry
+message without printing error objects or account data. Retry reloads the page; it
+does not approve or resubmit a business operation. Reduced-motion settings are
+respected and the initial HTML also explains disabled JavaScript.
+
+Image packaging fingerprints both public JavaScript files with their SHA-256
+content digest and updates the HTML references. WebAssembly retains its existing
+webpack content hashes. The public edge compresses only these exact versioned
+assets and permits immutable caching only for successful GET/HEAD responses.
+HTML, APIs, login, credential responses, errors and unversioned paths retain
+`no-store`. No service worker or browser storage of personal data is introduced.
+Existing compiled JVM/Wasm outputs can be reused when only these public resources
+change; normal CI still compiles the full project before image packaging.
