@@ -11,12 +11,12 @@ android {
         minSdk = 30
         targetSdk = 37
         testInstrumentationRunner = "id.nusacred.wallet.DeviceSecurityProof"
-        versionCode = 3
+        versionCode = 4
         versionName = "0.5.0-p5"
         manifestPlaceholders["appAuthRedirectScheme"] = "id.nusacred.wallet"
-        buildConfigField("String", "WALLET_ORIGIN", "\"https://wallet-p2.demo.inoerawan.id\"")
-        buildConfigField("String", "OIDC_ISSUER", "\"https://auth-p2.demo.inoerawan.id/realms/competency-proof-p2\"")
-        buildConfigField("String", "OIDC_REDIRECT_URI", "\"https://wallet-p2.demo.inoerawan.id/auth/android/callback\"")
+        buildConfigField("String", "WALLET_ORIGIN", "\"https://dompet-identitas.demo.inoerawan.id\"")
+        buildConfigField("String", "OIDC_ISSUER", "\"https://login-dompet-identitas.demo.inoerawan.id/realms/competency-proof-p2\"")
+        buildConfigField("String", "OIDC_REDIRECT_URI", "\"https://dompet-identitas.demo.inoerawan.id/auth/android/callback\"")
     }
     val signingDirectory = providers.environmentVariable("P2_SIGNING_DIRECTORY").orNull?.let(::file)
     if (signingDirectory != null) signingConfigs.create("p2Candidate") {

@@ -1,9 +1,25 @@
 # P5 demonstration experience
 
-NusaCred uses a shared Compose design kit for the Android wallet and all three web
-portals. Warm neutral surfaces, ink/teal hierarchy, explicit actions and consistent
-loading, empty and error states make the actual application ready to present.
-The UI reads real BFF data; counts and outcomes are never fabricated.
+Three independently operated organizations use shared accessible components without
+sharing a corporate identity. LSP Nusantara (LSP Teknik Ketenagalistrikan Nusantara,
+demo) is the purple credential issuer; NusaCred Wallet (PT Dompet Identitas Nusantara,
+demo) is the teal custodial wallet provider; Karya Instalasi (PT Karya Instalasi
+Nusantara, demo) is the copper/navy employer and verifier. Each portal shows its own
+wordmark, role, legal organization, browser title and explanation of independent
+responsibilities. Login and recovery pages use the destination client's theme and
+explicitly identify the wallet provider as the authentication service. Identity
+labels are presentation only; backend authorization and cryptographic trust remain
+mandatory. The UI reads real BFF data; counts and outcomes are never fabricated.
+
+Entity domains are `lsp-nusantara.demo.inoerawan.id`,
+`dompet-identitas.demo.inoerawan.id`, `karya-instalasi.demo.inoerawan.id` and
+`login-dompet-identitas.demo.inoerawan.id`. Legacy public entry points redirect to
+their respective entity. The signed APK uses the new exact wallet/App Link and IdP
+origins (versionCode 4, retained certificate). The private credential-protocol
+identities and issuer/holder keys do not change. Changing the IdP URL requires the
+reviewed offline registry migration; preserve account IDs, subjects and wallet/key
+bindings, revoke old sessions and cancel old pending consent before reopening
+access. It requires a fresh interactive login, not a newly provisioned wallet.
 
 ## Wallet
 

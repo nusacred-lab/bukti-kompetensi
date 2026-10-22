@@ -16,12 +16,17 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import id.nusacred.ui.*
 import kotlinx.browser.document
+import kotlinx.browser.window
 import kotlinx.coroutines.*
 
 fun main() { ComposeViewport(document.getElementById("portal")!!) { Portal() } }
 
 private class PortalState {
-    var service by mutableStateOf("company")
+    var service by mutableStateOf(when(window.location.hostname) {
+        "lsp-nusantara.demo.inoerawan.id", "issuer-p2.demo.inoerawan.id" -> "issuer"
+        "karya-instalasi.demo.inoerawan.id", "verifier-p2.demo.inoerawan.id" -> "company"
+        else -> "custodian"
+    })
     var session by mutableStateOf<Data?>(null)
     var loading by mutableStateOf(true)
     var time by mutableStateOf(now())
@@ -109,6 +114,12 @@ private class PortalState {
         }
         if(state.service=="company" && state.session!=null && !state.publicView) try { state.refresh() } catch(_:Exception) {}
     }
+    val entity=Entities.forService(state.service)
+    LaunchedEffect(entity) {
+        document.title="${entity.brand} — ${entity.role}"
+        document.getElementById("portal")?.setAttribute("aria-label",entity.legalName+" — "+entity.role)
+    }
+    EntityTheme(entity) {
     BoxWithConstraints(Modifier.fillMaxSize().background(Palette.Paper)) {
         val availableHeight=maxHeight;val wide=maxWidth>900.dp;val contentPadding=if(wide) 36.dp else 20.dp
         Row(Modifier.fillMaxSize()) {
@@ -116,7 +127,9 @@ private class PortalState {
             Column(Modifier.weight(1f)) {
                 Row(Modifier.fillMaxWidth().background(Palette.White).padding(horizontal=contentPadding,vertical=18.dp),
                     horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
-                    if(!wide || state.isPublic) Brand() else Label(workspace(state.service),14,Palette.Muted,FontWeight.Medium)
+                    if(!wide || state.isPublic) Brand() else Column(verticalArrangement=Arrangement.spacedBy(3.dp)) {
+                        Eyebrow(entity.role,Palette.Teal);Label(entity.legalName,13,Palette.Ink,FontWeight.Medium)
+                    }
                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(14.dp)) {
                         if(wide) Pill("Synthetic demo")
                         if(state.session!=null) {
@@ -133,6 +146,8 @@ private class PortalState {
                     tabs(state.service).forEach { (id,label,icon) -> Action(label,primary=state.page==id,icon=icon) { state.page=id } }
                 }
                 Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(contentPadding),verticalArrangement=Arrangement.spacedBy(24.dp)) {
+                    OrganizationIdentity(entity)
+                    Rule()
                     if(state.problem.isNotEmpty()) Notice(state.problem,true)
                     if(state.success.isNotEmpty()) Notice(state.success)
                     when {
@@ -145,7 +160,7 @@ private class PortalState {
                     }
                     Spacer(Modifier.height(6.dp))
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
-                        Label("NusaCred · Competency, with confidence.",11,Palette.Muted)
+                        Label(entity.brand+" · Independently operated",11,Palette.Muted)
                         if(wide) Label("Synthetic demonstration · 2026",11,Palette.Muted)
                     }
                 }
@@ -161,6 +176,8 @@ private class PortalState {
                     Eyebrow(if(state.dialog=="assessment") "NEW ASSESSMENT" else if(state.dialog=="offer") "CREDENTIAL OFFER" else "VERIFICATION REQUEST")
                     Action("Close",primary=false,icon="close") { state.dialog="";state.qr=null }
                 }
+                OrganizationIdentity(entity,compact=true)
+                Rule()
                 when(state.dialog) {
                     "assessment" -> AssessmentForm(state,::act)
                     else -> QrPanel(state,::act)
@@ -172,6 +189,7 @@ private class PortalState {
             Label("Working securely…",13,Color.White)
         }
     }
+    }
 }
 private fun workspace(service:String)=when(service) { "issuer" -> "Certification workspace";"company" -> "Company workspace";else -> "Custodian workspace" }
 private fun tabs(service:String)=when(service) {
@@ -180,20 +198,21 @@ private fun tabs(service:String)=when(service) {
     else -> listOf(Triple("overview","Service overview","home"),Triple("recovery","Recovery & access","shield"))
 }
 @Composable private fun Sidebar(s:PortalState) {
-    Column(Modifier.width(236.dp).fillMaxHeight().background(Palette.Ink).padding(24.dp),verticalArrangement=Arrangement.spacedBy(28.dp)) {
-        Brand(light=true);Spacer(Modifier.height(12.dp));Eyebrow("WORKSPACE",Color(0xFFB3C8BC))
+    val entity=Entities.forService(s.service)
+    Column(Modifier.width(252.dp).fillMaxHeight().background(entity.sidebar).padding(24.dp),verticalArrangement=Arrangement.spacedBy(28.dp)) {
+        Brand(light=true);Spacer(Modifier.height(12.dp));Eyebrow("WORKSPACE",Color.White.copy(alpha=0.72f))
         Column(verticalArrangement=Arrangement.spacedBy(8.dp)) { tabs(s.service).forEach { (id,label,icon) ->
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(9.dp)).background(if(s.page==id) Color(0xFF31574B) else Color.Transparent)
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(9.dp)).background(if(s.page==id) Color.White.copy(alpha=0.16f) else Color.Transparent)
                 .clickable { s.page=id }.padding(horizontal=14.dp,vertical=14.dp),horizontalArrangement=Arrangement.spacedBy(12.dp),verticalAlignment=Alignment.CenterVertically) {
-                Icon(icon,if(s.page==id) Color.White else Color(0xFFB3C8BC),Modifier.size(20.dp));Label(label,13,if(s.page==id) Color.White else Color(0xFFB3C8BC),FontWeight.Medium)
+                Icon(icon,if(s.page==id) Color.White else Color.White.copy(alpha=0.72f),Modifier.size(20.dp));Label(label,13,if(s.page==id) Color.White else Color.White.copy(alpha=0.72f),FontWeight.Medium)
             }
         } }
         Spacer(Modifier.weight(1f))
-        Column(Modifier.fillMaxWidth().background(Color(0xFF24463C),RoundedCornerShape(12.dp)).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            Icon("shield",Color(0xFFB6DCC5));Label("Built on trust.",15,Color.White,FontWeight.SemiBold)
-            Label("Every credential is checked. Every decision has a reason.",12,Color(0xFFB3C8BC))
+        Column(Modifier.fillMaxWidth().background(Color.White.copy(alpha=0.08f),RoundedCornerShape(12.dp)).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+            Icon(entity.icon,Color.White.copy(alpha=0.85f));Label(entity.purpose,15,Color.White,FontWeight.SemiBold)
+            Label(entity.legalName,12,Color.White.copy(alpha=0.72f))
         }
-        Label("NusaCred / Synthetic demo",10,Color(0xFFB3C8BC))
+        Label(entity.role+" / Synthetic demo",10,Color.White.copy(alpha=0.72f))
     }
 }
 @Composable private fun PageHeading(eyebrow:String,title:String,description:String,action:(@Composable ()->Unit)?=null) {

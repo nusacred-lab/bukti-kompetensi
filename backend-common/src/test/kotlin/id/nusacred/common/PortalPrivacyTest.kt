@@ -49,6 +49,6 @@ class PortalPrivacyTest {
         }
         val decoded=QRCodeReader().decode(BinaryBitmap(HybridBinarizer(RGBLuminanceSource(size,size,pixels))))
         assertEquals(value,decoded.text)
-        assertTrue(value.startsWith("https://wallet-p2.demo.inoerawan.id/receive?offer="))
+        assertTrue(value.startsWith("https://dompet-identitas.demo.inoerawan.id/receive?offer="))
     }
 }

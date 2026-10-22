@@ -19,8 +19,8 @@ fun Application.portalRoutes(service: String, assets: File? = null) {
     }
 }
 fun walletPublicOrigin(): String {
-    val origin=System.getenv("WALLET_PUBLIC_ORIGIN") ?: "https://wallet-p2.demo.inoerawan.id"
-    require(origin in setOf("https://wallet-p2.demo.inoerawan.id","https://wallet.demo.inoerawan.id"))
+    val origin=System.getenv("WALLET_PUBLIC_ORIGIN") ?: "https://dompet-identitas.demo.inoerawan.id"
+    require(origin in setOf("https://dompet-identitas.demo.inoerawan.id","https://wallet.demo.inoerawan.id"))
     return origin
 }
 fun walletLink(reference: String, receiving: Boolean): String = walletPublicOrigin()+

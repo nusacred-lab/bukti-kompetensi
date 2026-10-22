@@ -118,6 +118,7 @@ class MainActivity : ComponentActivity() {
             }
             Box(Modifier.weight(1f)) {
                 Column(Modifier.fillMaxSize().verticalScroll(remember(signedIn,scanning,page,selected?.id,preview?.optString("id")) { ScrollState(0) }).padding(22.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
+                    OrganizationIdentity(Entities.Wallet,compact=true)
                     if(notice.isNotEmpty()) Notice(notice,errorNotice)
                     when {
                         walletLocked -> LockedScreen()
@@ -348,7 +349,7 @@ class MainActivity : ComponentActivity() {
             } else {
                 Label("Requested by",12,Palette.Muted)
                 Label("Company verification",17,weight=FontWeight.SemiBold)
-                Label("Requested through the NusaCred company portal.",13,Palette.Muted)
+                Label("Requested by PT Karya Instalasi Nusantara (demo).",13,Palette.Muted)
             }
         }
         if(!receive) {
@@ -534,7 +535,7 @@ class MainActivity : ComponentActivity() {
         if(store.operation()!=null) { inform("Finish or decline the current request before opening another code.",true);return false }
         return try {
         val uri=Uri.parse(value);val parameter=when(uri.path) { "/receive" -> "offer";"/present" -> "request_url";else -> error("Unsupported link") }
-        check(value.length<=8192 && uri.scheme=="https" && uri.authority=="wallet-p2.demo.inoerawan.id" && uri.fragment==null &&
+        check(value.length<=8192 && uri.scheme=="https" && uri.authority==Uri.parse(BuildConfig.WALLET_ORIGIN).authority && uri.fragment==null &&
             uri.queryParameterNames==setOf(parameter) && uri.getQueryParameters(parameter).size==1 && !uri.getQueryParameter(parameter).isNullOrBlank())
         store.saveContext(value);store.clearOperation();pendingLink=value;preview=null;selected=null;uncertain=false;page="wallet"
         inform(if(signedIn) "Request received. Review the details before you approve." else "Request saved. Sign in to review it.");true

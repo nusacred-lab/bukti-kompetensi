@@ -37,7 +37,7 @@ digest = hashlib.sha256(target.read_bytes()).hexdigest()
 manifest = {'schemaVersion': 1, 'kind': 'local-signed-preview', 'sourceRepository': 'nusacred-lab/competency-proof',
             'sourceRevision': revision, 'createdAt': datetime.now(timezone.utc).isoformat(),
             'apk': {'name': target.name, 'sha256': digest, 'certificateSha256': fingerprint,
-                    'applicationId': 'id.nusacred.wallet', 'versionName': '0.5.0-p5', 'versionCode': 3},
+                    'applicationId': 'id.nusacred.wallet', 'versionName': '0.5.0-p5', 'versionCode': 4},
             'limits': ['Synthetic prerelease candidate', 'Local build manifest; not a CI attestation',
                        'P6 supply-chain release acceptance remains separate']}
 (a.output/'build-manifest.json').write_text(json.dumps(manifest, indent=2)+'\n')

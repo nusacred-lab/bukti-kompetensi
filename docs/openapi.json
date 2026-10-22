@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://wallet-p2.demo.inoerawan.id",
+      "url": "https://dompet-identitas.demo.inoerawan.id",
       "description": "Wallet host; use the operation x-host for issuer/company origins."
     }
   ],

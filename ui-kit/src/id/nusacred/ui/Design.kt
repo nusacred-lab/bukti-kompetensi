@@ -29,12 +29,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 object Palette {
-    val Ink=Color(0xFF183331)
-    val Muted=Color(0xFF667873)
-    val Teal=Color(0xFF087B69)
-    val TealSoft=Color(0xFFE5F2EB)
-    val Paper=Color(0xFFF5F6F2)
-    val Line=Color(0xFFDFE6DF)
+    val Ink: Color @Composable get() = LocalEntity.current.ink
+    val Muted: Color @Composable get() = LocalEntity.current.muted
+    val Teal: Color @Composable get() = LocalEntity.current.accent
+    val TealSoft: Color @Composable get() = LocalEntity.current.soft
+    val Paper: Color @Composable get() = LocalEntity.current.paper
+    val Line: Color @Composable get() = LocalEntity.current.line
     val White=Color.White
     val Amber=Color(0xFF98602B)
     val AmberSoft=Color(0xFFFBF0DE)
@@ -50,11 +50,15 @@ object Palette {
     Label(text,size,weight=FontWeight.SemiBold,modifier=modifier.semantics { heading() })
 @Composable fun Eyebrow(text: String, color: Color=Palette.Muted) = Label(text.uppercase(),11,color,FontWeight.SemiBold)
 @Composable fun Brand(light: Boolean=false, compact: Boolean=false) {
+    val entity=LocalEntity.current
     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-        Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(if(light) Color(0xFF31564D) else Palette.Teal),contentAlignment=Alignment.Center) {
-            Icon("mark",Color.White,Modifier.size(22.dp))
+        Box(Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(if(light) Color.White.copy(alpha=0.14f) else entity.accent),contentAlignment=Alignment.Center) {
+            Icon(entity.icon,Color.White,Modifier.size(22.dp))
         }
-        if(!compact) Label("NusaCred",22,if(light) Color.White else Palette.Ink,FontWeight.Bold)
+        if(!compact) Column(verticalArrangement=Arrangement.spacedBy(1.dp)) {
+            Label(entity.brand,19,if(light) Color.White else entity.ink,FontWeight.Bold)
+            Label(entity.role.uppercase(),9,if(light) Color.White.copy(alpha=0.72f) else entity.muted,FontWeight.SemiBold)
+        }
     }
 }
 @Composable fun Icon(name: String, color: Color=Palette.Ink, modifier: Modifier=Modifier, description: String?=null) {
