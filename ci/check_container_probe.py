@@ -9,7 +9,7 @@ import urllib.request
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--origin", default="http://127.0.0.1:18080")
 args = parser.parse_args()
-if args.origin != "http://127.0.0.1:18080":
+if args.origin not in {"http://127.0.0.1:18080", "http://127.0.0.1:18081"}:
     parser.error("This private stack probe is restricted to the local diagnostic endpoint.")
 
 

@@ -27,10 +27,9 @@
     retry.hidden = false;
   }
   function ready() {
-    const canvas = portal.querySelector("canvas");
-    // The application sets its entity label after Compose mounts. Canvas
-    // insertion alone happens too early, before the renderer is initialized.
-    if (completed || waitingForFrame || !canvas || canvas.width === 0 ||
+    // Compose publishes the owning entity label after mounting. The renderer
+    // may own a separate surface, so do not depend on a particular canvas tree.
+    if (completed || waitingForFrame ||
         portal.getAttribute("aria-label") === "Competency workspace") return;
     waitingForFrame = true;
     requestAnimationFrame(() => requestAnimationFrame(() => {
