@@ -10,6 +10,9 @@ COPY LICENSE /app/LICENSE
 COPY issuer-backend/build/install/issuer-backend/lib/ /app/lib/
 COPY custodian-backend/build/install/custodian-backend/native/ /app/native/
 COPY web-portals/build/dist/wasmJs/productionExecutable/ /app/portals/
+COPY web-portals/src/wasmJsMain/resources/ /app/portals/
+COPY ci/prepare_portal_assets.sh /tmp/prepare_portal_assets.sh
+RUN sh /tmp/prepare_portal_assets.sh /app/portals && rm /tmp/prepare_portal_assets.sh
 USER 10001:10001
 ENV HOME=/tmp HTTP_HOST=0.0.0.0 HTTP_PORT=8080 PORTAL_ROOT=/app/portals
 EXPOSE 8080

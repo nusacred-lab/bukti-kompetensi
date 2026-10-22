@@ -3,14 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#183331">
+  <meta name="theme-color" content="#087b69">
   <meta name="description" content="Independent certification, custodial wallet and employer verification services.">
   <title>Competency services</title>
-  <style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f5f6f2;font-family:system-ui,sans-serif}#portal{width:100%;height:100%}noscript{display:block;padding:32px;color:#183331}*:focus-visible{outline:3px solid #087b69;outline-offset:3px}</style>
+  <style>
+    :root{--accent:#087b69;--paper:#f5f6f2;--ink:#183331}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--paper);font-family:system-ui,sans-serif;color:var(--ink)}
+    #portal{width:100%;height:100%}*:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+    #portal-boot{position:fixed;inset:0;z-index:100;background:var(--paper);display:grid;place-items:center;padding:24px;box-sizing:border-box}
+    #portal-boot[hidden]{display:none}.boot-card{width:min(100%,440px);box-sizing:border-box;padding:36px;background:#fff;border:1px solid #e2e6e1;border-radius:20px;box-shadow:0 16px 56px #1833310a}
+    .boot-brand{display:flex;align-items:center;gap:12px;font-weight:700;font-size:20px}.boot-mark{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--accent);color:#fff;font-size:22px}
+    .boot-role{display:block;margin-top:4px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:#53645f}
+    #boot-heading{font-size:26px;line-height:1.2;letter-spacing:-.04em;margin:32px 0 12px}#boot-message{font-size:15px;line-height:1.6;color:#53645f;margin:0 0 24px}
+    .boot-spinner{display:inline-block;width:22px;height:22px;border:3px solid #e2e6e1;border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;margin-right:12px}
+    .boot-status{font-size:13px;color:#53645f}#boot-retry{margin-top:24px;background:var(--accent);color:#fff;border:0;border-radius:10px;padding:13px 20px;font:600 14px system-ui;cursor:pointer}
+    #boot-retry[hidden]{display:none}.boot-footer{font-size:11px;color:#64746f;border-top:1px solid #e2e6e1;margin-top:28px;padding-top:18px;line-height:1.5}
+    noscript{position:fixed;z-index:101;bottom:24px;left:24px;right:24px;background:#fff;padding:20px;border:1px solid #e2e6e1;border-radius:12px}
+    @keyframes spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.boot-spinner{animation:none}}
+  </style>
 </head>
 <body>
-  <main id="portal" aria-label="Competency workspace"></main>
-  <noscript>This workspace requires JavaScript to open your secure workspace.</noscript>
-  <script src="web-portals.js"></script>
+  <main id="portal" aria-label="Competency workspace" aria-busy="true"></main>
+  <section id="portal-boot" aria-label="Opening your workspace">
+    <div class="boot-card">
+      <div class="boot-brand"><span class="boot-mark" aria-hidden="true">&#9671;</span><div><span id="boot-brand">Secure workspace</span><span id="boot-role" class="boot-role">Independent competency services</span></div></div>
+      <h1 id="boot-heading">Opening your workspace.</h1>
+      <p id="boot-message">Preparing your secure workspace. The first visit may take a little longer.</p>
+      <div role="status" aria-live="polite"><span class="boot-spinner" aria-hidden="true"></span><span id="boot-status" class="boot-status">Loading the application…</span></div>
+      <button id="boot-retry" type="button" hidden>Try again</button>
+      <p id="boot-owner" class="boot-footer">Independent organizations. Connected with your consent.</p>
+    </div>
+  </section>
+  <noscript>JavaScript is disabled. Enable it, then reload to open your workspace.</noscript>
+  <script src="portal-boot.js" defer></script>
+  <script src="web-portals.js" defer></script>
 </body>
 </html>

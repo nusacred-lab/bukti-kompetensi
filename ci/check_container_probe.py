@@ -24,9 +24,18 @@ def get(path):
 status, body = get("/health/live")
 assert status == 200 and json.loads(body) == {"status": "up", "scope": "stack-probe"}
 assets = Path(__file__).resolve().parents[1] / "web-portals/build/dist/wasmJs/productionExecutable"
-for path in [assets / "index.html", assets / "web-portals.js", *assets.glob("*.wasm")]:
-    status, body = get("/" if path.name == "index.html" else "/" + path.name)
-    assert status == 200 and hashlib.sha256(body).digest() == hashlib.sha256(path.read_bytes()).digest()
+resources = Path(__file__).resolve().parents[1] / "web-portals/src/wasmJsMain/resources"
+html = (resources / "index.html").read_text()
+public_assets = []
+for name, source in [("portal-boot", resources / "portal-boot.js"), ("web-portals", assets / "web-portals.js")]:
+    body = source.read_bytes()
+    filename = name + "-" + hashlib.sha256(body).hexdigest()[:20] + ".js"
+    html = html.replace(f'src="{name}.js"', f'src="{filename}"')
+    public_assets.append(("/" + filename, body))
+public_assets.extend(("/" + p.name, p.read_bytes()) for p in assets.glob("*.wasm"))
+for path, expected in [("/", html.encode()), *public_assets]:
+    status, body = get(path)
+    assert status == 200 and hashlib.sha256(body).digest() == hashlib.sha256(expected).digest()
 for path in ("/health/ready", "/credentials", "/wallets", "/internal/recoveries", "/lib/",
              "/..%2flib/", "/%2e%2e/lib/", "/gradle/verification-metadata.xml"):
     assert get(path)[0] in (400, 404), "Unexpected exposed route: " + path
