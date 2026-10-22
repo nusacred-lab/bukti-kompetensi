@@ -63,14 +63,15 @@ class OperationOutcomeTest {
         assertFalse(details.containsKey("claims"),"Protocol claim objects must not leak into the native string-list contract")
         assertEquals(0,sends,"Restoring review must not dispatch")
         val body=mapOf("previewHash" to preview["previewHash"],"consent" to true,"credentialId" to "credential-one","disclosures" to details["disclosures"])
+        val consentKey=java.util.UUID.randomUUID().toString()
         val tampered=client.post("/api/v1/exchange-contexts/$id/present") {
-            native();header("Content-Type","application/json");header("Idempotency-Key","claim-consent-key-0001")
+            native();header("Content-Type","application/json");header("Idempotency-Key",consentKey)
             setBody(json(body+mapOf("disclosures" to emptyList<String>())))
         }
         assertEquals(404,tampered.status.value)
         repeat(2) {
             val accepted=client.post("/api/v1/exchange-contexts/$id/present") {
-                native();header("Content-Type","application/json");header("Idempotency-Key","claim-consent-key-0001")
+                native();header("Content-Type","application/json");header("Idempotency-Key",consentKey)
                 setBody(json(body))
             }
             assertEquals(202,accepted.status.value)
