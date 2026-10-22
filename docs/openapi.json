@@ -3,7 +3,7 @@
   "info": {
     "title": "Competency Proof application API",
     "version": "1.0.0",
-    "description": "P3 foundation contract. P4 endpoints are explicitly marked and are not a claim of a working business credential flow. Legacy P2 auth/wallet paths remain temporary compatibility aliases."
+    "description": "P4 private synthetic credential business API. Real issuer/wallet/verifier adapters enforce recipient binding, explicit consent, verified claims and immutable business decisions. Legacy P2 paths remain compatibility aliases; complete portal and APK journeys follow P5."
   },
   "servers": [
     {
@@ -770,7 +770,7 @@
           "wallet"
         ],
         "x-host": "wallet",
-        "x-implementation-phase": "P3",
+        "x-implementation-phase": "P4",
         "x-ownership": "authenticated",
         "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. ",
         "security": [
@@ -937,7 +937,7 @@
           "wallet"
         ],
         "x-host": "wallet",
-        "x-implementation-phase": "P3",
+        "x-implementation-phase": "P4",
         "x-ownership": "authenticated",
         "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. ",
         "security": [
@@ -1119,7 +1119,7 @@
     "/api/v1/exchange-contexts/{id}/accept": {
       "post": {
         "operationId": "post__exchange-contexts_id_accept",
-        "summary": "Reserve issuance consent; P4 receiving adapter required",
+        "summary": "Accept a recipient-bound issuance preview and receive into the server wallet",
         "tags": [
           "wallet"
         ],
@@ -1814,9 +1814,9 @@
           "issuer"
         ],
         "x-host": "issuer",
-        "x-implementation-phase": "P3",
+        "x-implementation-phase": "P4",
         "x-ownership": "authenticated",
-        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. Protocol dispatch remains P4; P3 only reserves durable work.",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. Protocol dispatch uses the fixed private fork service; ambiguous outcomes require reconciliation and are never blindly retried.",
         "security": [
           {
             "browserCookie": []
@@ -2002,7 +2002,7 @@
           "issuer"
         ],
         "x-host": "issuer",
-        "x-implementation-phase": "P3",
+        "x-implementation-phase": "P4",
         "x-ownership": "authenticated",
         "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. ",
         "security": [
@@ -2601,9 +2601,9 @@
           "company"
         ],
         "x-host": "company",
-        "x-implementation-phase": "P3",
+        "x-implementation-phase": "P4",
         "x-ownership": "browser owner or company admin",
-        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. Protocol dispatch remains P4; P3 only reserves durable work.",
+        "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. Browser mutations require an exact Origin and X-CSRF-Token. Protocol dispatch uses the fixed private fork service; ambiguous outcomes require reconciliation and are never blindly retried.",
         "security": [
           {
             "viewerCookie": []
@@ -2788,7 +2788,7 @@
           "company"
         ],
         "x-host": "company",
-        "x-implementation-phase": "P3",
+        "x-implementation-phase": "P4",
         "x-ownership": "browser owner or company admin",
         "description": "Maximum JSON body: 32768 bytes. Sensitive responses use Cache-Control: no-store. ",
         "security": [
@@ -3958,6 +3958,14 @@
           "expiresAt": {
             "type": "integer",
             "format": "int64"
+          },
+          "offerUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 4096,
+            "description": "Encrypted recipient-bound nusacred-offer reference."
           }
         },
         "required": [
@@ -3987,6 +3995,14 @@
               "COMPLETED",
               "RECONCILE_REQUIRED"
             ]
+          },
+          "offerUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 4096,
+            "description": "Encrypted recipient-bound nusacred-offer reference."
           }
         },
         "required": [
@@ -4054,6 +4070,13 @@
               "integer",
               "null"
             ]
+          },
+          "requestUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 4096
           }
         },
         "required": [
@@ -4072,6 +4095,13 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 4096
+          },
+          "credentialId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 128
           }
         },
         "required": [
@@ -4173,6 +4203,14 @@
               "issuer",
               "disclosures"
             ]
+          },
+          "choices": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
           }
         },
         "required": [

@@ -1,6 +1,8 @@
 package id.nusacred.custodian
 
 import com.nimbusds.jose.util.JSONObjectUtils
+import id.nusacred.common.OfferReference
+import id.nusacred.common.CredentialProtocol
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -59,6 +61,28 @@ class WalletClient internal constructor(origin: String, private val transport: (
         val key = (keys.single() as? Map<*, *>)?.get("keyId") as? String ?: return null
         return wallet to key
     }
+    fun resolveOffer(wallet: String, url: String): Map<String,Any> = JSONObjectUtils.parse(request(
+        "/wallet/${segment(wallet)}/credentials/receive/resolve-offer",mapOf("offerUrl" to url)))
+    fun receive(wallet: String, key: String, resolved: Map<String,Any>, nonce: String): Boolean {
+        val path="/wallet/${segment(wallet)}/credentials/receive/"
+        val token=JSONObjectUtils.parse(request(path+"request-token",mapOf("tokenEndpoint" to resolved["tokenEndpoint"],
+            "preAuthorizedCode" to resolved["preAuthorizedCode"],"credentialIssuer" to resolved["credentialIssuer"])))
+        val proof=JSONObjectUtils.parse(request(path+"sign-proof",mapOf("issuerUrl" to resolved["credentialIssuer"],"nonce" to nonce,
+            "credentialConfigurationId" to "competency_demo","keyId" to key)))
+        val before=JSONObjectUtils.parse("{\"items\":"+credentials(wallet)+"}")["items"] as List<*>
+        val fetched=JSONObjectUtils.parse(request(path+"fetch-credential",mapOf("credentialEndpoint" to resolved["credentialEndpoint"],
+            "accessToken" to token["accessToken"],"credentialConfigurationId" to "competency_demo","proofJwt" to proof["proofJwt"],"storeInWallet" to true)))
+        if((fetched["rawCredentials"] as? List<*>)?.size != 1) throw ReconciliationRequired()
+        val after=JSONObjectUtils.parse("{\"items\":"+credentials(wallet)+"}")["items"] as List<*>
+        // A bounded read-back is part of success, never an inference from a successful fetch alone.
+        if(after.size != before.size+1) throw ReconciliationRequired()
+        val old=before.map { (it as? Map<*,*>)?.get("id") }.toSet()
+        val added=after.map { it as? Map<*,*> ?: throw ReconciliationRequired() }.singleOrNull { it["id"] !in old }
+            ?: throw ReconciliationRequired()
+        val saved=JSONObjectUtils.parse(credential(wallet,added["id"] as String))["credential"] as? Map<*,*> ?: throw ReconciliationRequired()
+        if(saved["signedWithDisclosures"] != (fetched["rawCredentials"] as List<*>).single()) throw ReconciliationRequired()
+        return true
+    }
     fun credentials(wallet: String): String = request("/wallet/${segment(wallet)}/credentials")
     fun credential(wallet: String, id: String): String = request("/wallet/${segment(wallet)}/credentials/${segment(id)}")
     fun preview(wallet: String, url: String): Map<String, Any> = JSONObjectUtils.parse(request(
@@ -73,7 +97,8 @@ class WalletClient internal constructor(origin: String, private val transport: (
     }
 }
 
-class WalletService(private val registry: AccessRegistry, private val upstream: WalletClient) {
+class WalletService(private val registry: AccessRegistry, private val upstream: WalletClient,
+    private val offerReferences: OfferReference? = null, private val protocol: CredentialProtocol = CredentialProtocol()) {
     fun provision(opaque: String): WalletBinding = registry.provision(hash(opaque), upstream::create)
     fun reconcile(opaque: String): WalletBinding = registry.reconcile(hash(opaque), upstream::lookup)
     fun credentials(opaque: String): String = registry.read(hash(opaque)) {
@@ -85,14 +110,17 @@ class WalletService(private val registry: AccessRegistry, private val upstream: 
         val binding = registry.binding(hash(opaque))?.takeIf { it.state == "READY" } ?: throw AccessDenied()
         upstream.credential(binding.walletId!!,id)
     }
-    fun preview(opaque: String, url: String): Map<String, Any?> = registry.read(hash(opaque)) {
+    fun preview(opaque: String, url: String, selected: String? = null): Map<String, Any?> = registry.read(hash(opaque)) {
         validatePresentationUrl(url)
         val b = registry.binding(hash(opaque))?.takeIf { it.state == "READY" } ?: throw AccessDenied()
         val p = upstream.preview(b.walletId!!, url)
         if (p["valid"] != true || p["keyId"] != b.keyId) throw AccessDenied()
         val options = p["credentialOptions"] as? List<*> ?: throw AccessDenied()
-        // Minimal P2 proof: one explicit credential choice. Full multi-choice UI is a later phase.
-        val chosen = options.singleOrNull() as? Map<*, *> ?: throw AccessDenied()
+        // Each preview binds one explicit choice from the complete DCQL candidate set.
+        if(options.size !in 1..100) throw AccessDenied()
+        val candidates=options.map { it as? Map<*,*> ?: throw AccessDenied() }
+        val chosen = if(selected == null) candidates.firstOrNull() ?: throw AccessDenied()
+            else candidates.singleOrNull { it["credentialId"] == selected } ?: throw AccessDenied()
         val query = chosen["queryId"] as? String ?: throw AccessDenied()
         val credential = chosen["credentialId"] as? String ?: throw AccessDenied()
         val disclosures = chosen["disclosures"] as? List<*> ?: throw AccessDenied()
@@ -107,7 +135,37 @@ class WalletService(private val registry: AccessRegistry, private val upstream: 
             "url" to url, "wallet" to b.walletId, "key" to b.keyId, "query" to query,
             "credential" to credential, "summary" to summary, "disclosures" to disclosures, "expires" to expires.epochSecond)))
         mapOf("context_id" to id, "credential_id" to credential, "summary_hash" to summary,
-            "expires_at" to expires.epochSecond, "consent_required" to true, "details" to details)
+            "expires_at" to expires.epochSecond, "consent_required" to true, "details" to details,
+            "choices" to candidates.map { mapOf("credentialId" to it["credentialId"],"label" to it["label"],"issuer" to it["issuer"]) })
+    }
+    fun receivePreview(opaque: String, reference: String): Map<String,Any?> = registry.read(hash(opaque)) {
+        val payload=(offerReferences ?: throw AccessDenied()).open(reference,registry.accountId(hash(opaque)),Instant.now().epochSecond)
+        val binding=registry.binding(hash(opaque))?.takeIf { it.state == "READY" } ?: throw AccessDenied()
+        val resolved=upstream.resolveOffer(binding.walletId!!,payload["url"] as String)
+        validateResolvedOffer(resolved)
+        val id=randomToken()
+        val expires=minOf((payload["expires"] as Number).toLong(),Instant.now().epochSecond+240)
+        val summary=hash(json(mapOf("reference" to reference,"wallet" to binding.walletId,"key" to binding.keyId,"resolved" to resolved)))
+        val preview=json(mapOf("kind" to "receive","wallet" to binding.walletId,"key" to binding.keyId,"resolved" to resolved,"summary" to summary))
+        registry.saveReceivingPreview(hash(opaque),payload["id"] as String,id,summary,expires,preview)
+        mapOf("id" to id,"credentialId" to null,"previewHash" to summary,"expiresAt" to expires,"consentRequired" to true,
+            "details" to mapOf("candidateId" to payload["candidate"],"credentialLabel" to "Competency Proof","issuer" to resolved["credentialIssuer"]))
+    }
+    fun receiveConsented(opaque: String, id: String, summary: String, key: String): Map<String,Any?> = synchronized(registry) {
+        val state=registry.operation(hash(opaque),id)["state"]
+        var preview: Map<String,Any>?=null
+        if(state == "PENDING") {
+            preview=JSONObjectUtils.parse(registry.preview(hash(opaque),id))
+            if(preview["kind"] != "receive" || preview["summary"] != summary) throw AccessDenied()
+        }
+        registry.consent(hash(opaque),id,summary,key,hash(json(mapOf("id" to id,"summary" to summary,"action" to "receive"))))
+        if(preview != null) registry.dispatch(hash(opaque),id,summary) {
+            @Suppress("UNCHECKED_CAST") val resolved=preview["resolved"] as Map<String,Any>
+            validateResolvedOffer(resolved)
+            val nonce=protocol.nonce()
+            upstream.receive(preview["wallet"] as String,preview["key"] as String,resolved,nonce)
+        }
+        registry.operation(hash(opaque),id)
     }
     fun present(opaque: String, id: String, summary: String): Boolean {
         val p = JSONObjectUtils.parse(registry.preview(hash(opaque),id))
@@ -152,4 +210,12 @@ fun validatePresentationUrl(value: String) {
     if (values["request_uri_method"]?.let { it != "post" } == true) throw AccessDenied()
     val client = values["client_id"] ?: throw AccessDenied()
     if (!client.startsWith("redirect_uri:http://verifier:7004/") && !client.startsWith("http://verifier:7004/")) throw AccessDenied()
+}
+
+private fun validateResolvedOffer(offer: Map<String,Any>) {
+    if(offer["credentialIssuer"] != "http://issuer:7005/openid4vci" || offer["credentialConfigurationIds"] != listOf("competency_demo") ||
+        offer["txCodeRequired"] != false || offer["preAuthorizedCode"] !is String) throw AccessDenied()
+    for((name,path) in mapOf("tokenEndpoint" to "/token","credentialEndpoint" to "/credential","nonceEndpoint" to "/nonce")) {
+        if(offer[name] != "http://issuer:7005/openid4vci$path") throw AccessDenied()
+    }
 }

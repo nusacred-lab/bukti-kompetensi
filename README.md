@@ -54,3 +54,12 @@ for ownership, role mapping, request limits, state transitions, migration and
 reproduction. Stable business wire enums use English. P2 diagnostic paths remain
 compatibility aliases for the proven candidate APK. Issuance/presentation
 reservations do not claim a completed P4 business flow.
+
+## P4 credential business services
+
+The P4 branch connects authorized assessments/offers, recipient-bound receiving,
+job verification sessions, explicit credential selection and persistent trust
+policy decisions to real private fork services. See [P4 behavior, migrations and
+validation](docs/P4-credential-business.md). API contract, recovery isolation and
+strict dependency verification remain enforced. Final portal/APK journeys and
+public deployment retain their P5–P8 acceptance gates.

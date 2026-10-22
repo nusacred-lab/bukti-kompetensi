@@ -29,7 +29,7 @@ class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) 
         }
         transaction {
             val version = query("PRAGMA user_version") { it.getInt(1) }.single()
-            require(version in 0..4) { "Unsupported access registry schema" }
+            require(version in 0..5) { "Unsupported access registry schema" }
             if (version == 0) {
                 execute("""CREATE TABLE accounts(id TEXT PRIMARY KEY, issuer TEXT NOT NULL, subject TEXT NOT NULL,
                     revision INTEGER NOT NULL DEFAULT 0, gate TEXT NOT NULL DEFAULT 'OPEN'
@@ -69,6 +69,10 @@ class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) 
             if (version < 4) {
                 execute("ALTER TABLE pending_operations ADD COLUMN reason TEXT")
                 execute("PRAGMA user_version=4")
+            }
+            if(version < 5) {
+                execute("CREATE TABLE receiving_offers(offer_id TEXT PRIMARY KEY, operation_id TEXT NOT NULL UNIQUE REFERENCES pending_operations(id))")
+                execute("PRAGMA user_version=5")
             }
             execute("UPDATE exchange_contexts SET state='RECONCILE_REQUIRED' WHERE state='EXECUTING'")
             // A crash after reserving or dispatching must never silently retry a side effect.
@@ -235,6 +239,14 @@ class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) 
         execute("INSERT INTO exchange_contexts(id,preview_json) VALUES(?,?)",id,previewJson)
         val a = authorize(tokenHash)
         execute("INSERT INTO audit VALUES(?,?,?,?,?)",UUID.randomUUID().toString(),a.id,"PREVIEW_CREATED",id,now().epochSecond)
+    }
+    @Synchronized fun saveReceivingPreview(tokenHash: String, offerId: String, id: String, summary: String, expires: Long, previewJson: String) = transaction {
+        authorize(tokenHash)
+        if(query("SELECT offer_id FROM receiving_offers WHERE offer_id=?",offerId) { it.getString(1) }.isNotEmpty())
+            throw ApiFailure(409,"OFFER_ALREADY_RESERVED","This offer already has a receiving operation.")
+        prepare(tokenHash,id,summary,expires)
+        execute("INSERT INTO exchange_contexts(id,preview_json) VALUES(?,?)",id,previewJson)
+        execute("INSERT INTO receiving_offers VALUES(?,?)",offerId,id)
     }
     /** Expiry is committed before returning a 410, including rejected consent retries. */
     private fun expireOperation(tokenHash: String, id: String): Boolean {
