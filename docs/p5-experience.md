@@ -6,14 +6,26 @@ demo) is the purple credential issuer; NusaCred Wallet (PT Dompet Identitas Nusa
 demo) is the teal custodial wallet provider; Karya Instalasi (PT Karya Instalasi
 Nusantara, demo) is the copper/navy employer and verifier. Each portal shows its own
 wordmark, role, legal organization, browser title and explanation of independent
-responsibilities. Login and recovery pages use the destination client's theme and
-explicitly identify the wallet provider as the authentication service. Identity
-labels are presentation only; backend authorization and cryptographic trust remain
+responsibilities. Login and recovery pages identify the owning organization as
+their authentication operator. Each organization has its own Keycloak runtime,
+database, bootstrap administrator, realm, signing keys, business client and secret.
+Users and browser sessions are not federated between organizations. Identity
+labels accompany backend authorization and cryptographic trust, which remain
 mandatory. The UI reads real BFF data; counts and outcomes are never fabricated.
 
 Entity domains are `lsp-nusantara.demo.inoerawan.id`,
 `dompet-identitas.demo.inoerawan.id`, `karya-instalasi.demo.inoerawan.id` and
-`login-dompet-identitas.demo.inoerawan.id`. Legacy public entry points redirect to
+`login-dompet-identitas.demo.inoerawan.id`. Staff login uses
+`login-lsp-nusantara.demo.inoerawan.id/realms/lsp-nusantara` and
+`login-karya-instalasi.demo.inoerawan.id/realms/karya-instalasi`.
+The wallet retains its existing `competency-proof-p2` realm and issuer so the APK,
+account registry and biometric refresh policy remain compatible. Staff accounts
+are moved out of the wallet realm with their original subjects and password
+hashes, preserving business organization assignments. The wallet realm no longer
+contains staff business clients or roles. Staff recovery is local to its own IdP;
+only wallet recovery uses the custodial recovery coordinator. Public identity
+routes remain explicitly allowlisted and administrative routes remain private.
+Legacy public entry points redirect to
 their respective entity. The signed APK uses the new exact wallet/App Link and IdP
 origins (versionCode 4, retained certificate). The private credential-protocol
 identities and issuer/holder keys do not change. Changing the IdP URL requires the
