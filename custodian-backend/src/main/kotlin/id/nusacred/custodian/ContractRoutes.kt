@@ -13,6 +13,12 @@ fun Application.contractRoutes(auth: OidcService, wallet: WalletService) {
 
 internal fun Application.contractRoutes(wallet: WalletService, guard: RequestGuard) {
     routing {
+        get("/api/v1/exchange-contexts/{id}") { call.api {
+            guard.identity(call,false).requireRole(Role.CANDIDATE)
+            val opaque=call.request.headers["Authorization"]?.removePrefix("Bearer ") ?: reject(403,"NATIVE_REQUIRED","Use the wallet application.")
+            call.reply(wallet.context(opaque,call.parameters["id"]!!))
+        } }
+
         get("/api/v1/wallet/credentials/{id}") { call.api {
             guard.identity(call,false).requireRole(Role.CANDIDATE)
             val opaque = call.request.headers["Authorization"]?.removePrefix("Bearer ") ?: reject(403,"NATIVE_REQUIRED","Use the wallet application.")

@@ -7,6 +7,14 @@ import io.ktor.server.routing.*
 fun Application.businessRoutes(store: DomainStore, guard: RequestGuard) {
     routing {
         if (store.service == "issuer") {
+            get("/api/v1/assessments") { call.api { call.reply(store.assessments(guard.identity(call,false))) } }
+            get("/api/v1/offers/{id}/qr") { call.api {
+                val offer=store.offer(guard.identity(call,false),call.parameters["id"]!!)
+                if((offer["expiresAt"] as Number).toLong() <= java.time.Instant.now().epochSecond) reject(410,"EXPIRED","Create a fresh offer.")
+                val ref=offer["offerUrl"] as? String ?: reject(409,"NOT_READY","This offer is not ready.")
+                call.reply(qrResponse(walletLink(ref,true)))
+            } }
+
             post("/api/v1/assessments") { call.api {
                 val p = guard.identity(call,true)
                 val b = call.jsonBody(setOf("candidateAccountId","candidateId","competencyCode","assessmentResult"))
@@ -18,6 +26,14 @@ fun Application.businessRoutes(store: DomainStore, guard: RequestGuard) {
             } }
             get("/api/v1/offers/{id}") { call.api { call.reply(store.offer(guard.identity(call,false),call.parameters["id"]!!)) } }
         } else {
+            get("/api/v1/jobs") { call.api { guard.rate("public:"+call.request.local.remoteHost,30);call.reply(store.jobs()) } }
+            get("/api/v1/verification-sessions") { call.api { call.reply(store.results(guard.identity(call,false))) } }
+            get("/api/v1/verification-sessions/{id}/qr") { call.api {
+                val result=store.result(guard.owner(call,false),call.parameters["id"]!!)
+                if(result["final"] == true) reject(410,"EXPIRED","Create a new verification session.")
+                val ref=result["requestUrl"] as? String ?: reject(409,"NOT_READY","This request is not ready.")
+                call.reply(qrResponse(walletLink(ref,false)))
+            } }
             get("/api/v1/browser-session") { call.api { call.reply(guard.openViewer(call)) } }
             put("/api/v1/jobs/{id}") { call.api {
                 val p = guard.identity(call,true)

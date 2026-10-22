@@ -308,5 +308,11 @@ class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) 
             id
         }
     }
+    @Synchronized fun serviceSummary(): Map<String,Any?> = transaction {
+        mapOf("registryAvailable" to true,"accounts" to query("SELECT COUNT(*) FROM accounts") { it.getLong(1) }.single(),
+            "walletsReady" to query("SELECT COUNT(*) FROM wallet_bindings WHERE state='READY'") { it.getLong(1) }.single(),
+            "recoveryPending" to query("SELECT COUNT(*) FROM accounts WHERE gate<>'OPEN'") { it.getLong(1) }.single(),
+            "operationsUncertain" to query("SELECT COUNT(*) FROM pending_operations WHERE state='RECONCILE_REQUIRED'") { it.getLong(1) }.single())
+    }
     @Synchronized override fun close() { db.close() }
 }

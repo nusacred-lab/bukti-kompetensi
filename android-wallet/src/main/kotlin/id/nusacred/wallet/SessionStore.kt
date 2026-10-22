@@ -53,7 +53,7 @@ class SessionStore(context: Context) {
             else { clearSession(); null }
         }
     } catch (_: Exception) { clearSession(); null }
-    fun clearSession() { prefs.edit().remove("session").commit() }
+    fun clearSession() { prefs.edit().remove("session").remove("operation").commit() }
     fun saveContext(link: String) = saveRecord("context", org.json.JSONObject().put("link", link)
         .put("expires", System.currentTimeMillis() + 240_000).toString())
     fun context(): String? = try {
@@ -64,5 +64,9 @@ class SessionStore(context: Context) {
         }
     } catch (_: Exception) { clearContext(); null }
     fun clearContext() { prefs.edit().remove("context").commit() }
+    fun saveOperation(id: String, key: String, receiving: Boolean) = saveRecord("operation",org.json.JSONObject()
+        .put("id",id).put("key",key).put("receiving",receiving).toString())
+    fun operation(): org.json.JSONObject? = try { loadRecord("operation")?.let { org.json.JSONObject(it) } } catch(_: Exception) { clearOperation();null }
+    fun clearOperation() { prefs.edit().remove("operation").commit() }
     fun clear() { prefs.edit().clear().commit() }
 }

@@ -2,6 +2,7 @@
 # Manual edits can break the build and are not advised.
 # This file is expected to be part of source control.
 # To regenerate this file, run: ./gradlew :integration-tests:dependencies --write-locks
+com.google.zxing:core:3.5.4=testRuntimeClasspath
 com.nimbusds:nimbus-jose-jwt:10.10=testCompileClasspath,testRuntimeClasspath
 com.typesafe:config:1.4.9=testCompileClasspath,testRuntimeClasspath
 io.ktor:ktor-client-apache5-jvm:3.6.0=testCompileClasspath,testRuntimeClasspath

@@ -103,8 +103,11 @@ fun Application.authRoutes(auth: OidcService) {
                     auth.finishBrowser(q["state"]!!, call.request.cookies[FLOW_COOKIE] ?: throw AuthRejected(), q["code"]!!)
                 }
                 call.cookie(FLOW_COOKIE, "", 0)
-                call.cookie(SESSION_COOKIE, opaque, 1800)
-                call.respondRedirect("/auth/account")
+                val lifetime=withContext(Dispatchers.IO) {
+                    (auth.session(opaque,"browser").expires.epochSecond-java.time.Instant.now().epochSecond).coerceIn(1,1800).toInt()
+                }
+                call.cookie(SESSION_COOKIE, opaque, lifetime)
+                call.respondRedirect("/")
             }
         }
         get("/auth/account") {
@@ -126,6 +129,23 @@ fun Application.authRoutes(auth: OidcService) {
                     const r=await fetch('/auth/logout',{method:'POST',headers:{'X-CSRF-Token':'${session.csrf}'}});
                     if(r.ok) location.replace('/'); else document.getElementById('result').textContent='Please sign in again.';};</script>
                     </body></html>""".trimIndent(), ContentType.Text.Html)
+            }
+        }
+        get("/api/v1/portal-session") {
+            call.api {
+                try {
+                    val (opaque,channel)=call.identity()
+                    if(channel != "browser") throw AuthRejected()
+                    val p=rate.identity(call,false)
+                    val session=auth.session(opaque,channel)
+                    call.reply(mapOf("email" to session.email,"accountId" to p.account,"roles" to p.roles.map { it.name },
+                        "organizationId" to p.organization,"csrf" to session.csrf,"expiresAt" to session.expires.epochSecond))
+                } catch(e: Exception) {
+                    if(call.request.headers[HttpHeaders.Authorization] == null &&
+                        (e is AuthRejected || (e is id.nusacred.common.ApiFailure && e.status==401)))
+                        call.cookie(SESSION_COOKIE,"",0)
+                    throw e
+                }
             }
         }
         get("/auth/me") {

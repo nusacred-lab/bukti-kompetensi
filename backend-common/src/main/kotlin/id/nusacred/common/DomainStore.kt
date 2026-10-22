@@ -243,5 +243,25 @@ class DomainStore(path: Path, val service: String, private val now: () -> Long =
         sql.execute("INSERT OR IGNORE INTO verification_results VALUES(?,?,?,?,?,?)",id,
             if(reason == "VERIFIED") "FULFILLED" else "NOT_FULFILLED",reason,now(),revision(job.first),BUSINESS_POLICY_VERSION) == 1
     }
+    fun assessments(p: Principal): Map<String,Any?> = sql.transaction {
+        check(service == "issuer");permit(p)
+        val items=sql.query("""SELECT a.*,o.id AS offer_id,o.expires,o.offer_url,p.state FROM assessments a
+            LEFT JOIN issuance_offers o ON o.id=(SELECT id FROM issuance_offers WHERE assessment_id=a.id ORDER BY expires DESC,id DESC LIMIT 1)
+            LEFT JOIN operations p ON p.id=o.operation_id WHERE a.organization=? ORDER BY a.rowid DESC LIMIT 100""",p.organization()) {
+            mapOf("id" to it.getString("id"),"candidateId" to it.getString("candidate"),"candidateAccountId" to it.getString("recipient"),
+                "competencyCode" to it.getString("competency"),"assessmentResult" to it.getString("result"),"offerId" to it.getString("offer_id"),
+                "offerState" to it.getString("state"),"offerExpiresAt" to it.getLong("expires"),"offerUrl" to it.getString("offer_url"))
+        }
+        mapOf("items" to items,"limit" to 100)
+    }
+    fun jobs(): Map<String,Any?> = mapOf("items" to sql.query("SELECT id,title,competency,assessment,revision FROM jobs ORDER BY id LIMIT 100") {
+        mapOf("id" to it.getString(1),"title" to it.getString(2),"competencyCode" to it.getString(3),"assessmentResult" to it.getString(4),"revision" to it.getLong(5))
+    },"limit" to 100)
+    fun results(p: Principal): Map<String,Any?> {
+        check(service == "company");permit(p)
+        val ids=sql.query("SELECT id FROM verification_sessions WHERE organization=? ORDER BY rowid DESC LIMIT 100",p.organization()) { it.getString(1) }
+        // Lists use stored snapshots. Only an explicitly selected record polls the verifier.
+        return mapOf("items" to ids.map { storedResult(p,it) },"limit" to 100)
+    }
     override fun close() = sql.close()
 }

@@ -15,3 +15,17 @@
 !web-portals/build/dist/wasmJs/
 !web-portals/build/dist/wasmJs/productionExecutable/
 !web-portals/build/dist/wasmJs/productionExecutable/**
+
+!issuer-backend/
+!issuer-backend/build/
+!issuer-backend/build/install/
+!issuer-backend/build/install/issuer-backend/
+!issuer-backend/build/install/issuer-backend/lib/
+!issuer-backend/build/install/issuer-backend/lib/**
+
+!company-backend/
+!company-backend/build/
+!company-backend/build/install/
+!company-backend/build/install/company-backend/
+!company-backend/build/install/company-backend/lib/
+!company-backend/build/install/company-backend/lib/**
