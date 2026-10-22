@@ -83,6 +83,8 @@ data class AppSession(val subject: String, val sid: String, val email: String, v
 
 /** IdP tokens stay memory-only; the registry enforces persistent recovery revisions. */
 class OidcService(val config: OidcConfig, private val registry: OidcRegistry? = null) {
+    private data class NativeRenewal(val subject:String,val sid:String,val nonce:String,val authTime:Long,val started:Instant,val until:Instant)
+    private val renewals = ConcurrentHashMap<String,NativeRenewal>()
     private val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))
         .followRedirects(HttpClient.Redirect.NEVER).build()
     private val nativeFlows = ConcurrentHashMap<String, LoginFlow>()
@@ -145,11 +147,12 @@ class OidcService(val config: OidcConfig, private val registry: OidcRegistry? = 
         nativeFlows.entries.removeIf { !it.value.expires.isAfter(now) }
         browserFlows.entries.removeIf { !it.value.expires.isAfter(now) }
         sessions.entries.removeIf { !it.value.expires.isAfter(now) }
+        renewals.entries.removeIf { !it.value.until.isAfter(now) }
     }
     @Synchronized fun startNative(): Map<String, Any?> {
         if (config.clientId != "custodian-bff-p2") throw AuthRejected()
         prune()
-        if (nativeFlows.size + browserFlows.size >= 256 || sessions.size >= 512) throw AuthRejected()
+        if (nativeFlows.size + browserFlows.size >= 256 || sessions.size >= 512 || renewals.size >= 512) throw AuthRejected()
         val ticket = randomToken()
         val flow = LoginFlow(randomToken(), "", "", Instant.now().plusSeconds(300))
         nativeFlows[hash(ticket)] = flow
@@ -179,6 +182,21 @@ class OidcService(val config: OidcConfig, private val registry: OidcRegistry? = 
         val flow = consume(nativeFlows, ticket)
         return create(access, idToken, config.nativeClientId, flow.nonce, "native", flow.expires.minusSeconds(300))
     }
+    @Synchronized fun renewNative(previous:String,access:String,idToken:String):String {
+        if(config.clientId != "custodian-bff-p2" || previous.length !in 32..128) throw AuthRejected()
+        val key=hash(previous)
+        val bound=renewals[key]?.takeIf { it.until.isAfter(Instant.now()) } ?: throw AuthRejected()
+        requireNotNull(registry).authorizeRenewal(key)
+        val next=create(access,idToken,config.nativeClientId,bound.nonce,"native",bound.started,bound)
+        registry.revoke(key);sessions.remove(key);renewals.remove(key)
+        return next
+    }
+    @Synchronized fun logoutNative(opaque:String) {
+        val key=hash(opaque)
+        if(renewals[key]?.until?.isAfter(Instant.now())!=true) throw AuthRejected()
+        requireNotNull(registry).authorizeRenewal(key)
+        logout(opaque)
+    }
     fun finishBrowser(state: String, cookie: String, code: String): String {
         if (state.length !in 32..128 || code.length !in 1..4096) throw AuthRejected()
         val pending = browserFlows[hash(state)] ?: throw AuthRejected()
@@ -191,17 +209,19 @@ class OidcService(val config: OidcConfig, private val registry: OidcRegistry? = 
         return create(tokens["access_token"] as? String ?: throw AuthRejected(),
             tokens["id_token"] as? String ?: throw AuthRejected(), config.clientId, flow.nonce, "browser", flow.expires.minusSeconds(300))
     }
-    private fun create(access: String, idToken: String, clientId: String, nonce: String, channel: String, started: Instant): String {
+    private fun create(access: String, idToken: String, clientId: String, nonce: String, channel: String, started: Instant, renewal:NativeRenewal?=null): String {
         val id = claims(idToken, clientId)
         val token = claims(access, config.clientId)
         val sid = token.getStringClaim("sid") ?: throw AuthRejected()
-        if (id.getStringClaim("nonce") != nonce || id.subject != token.subject || id.getStringClaim("sid") != sid ||
+        if ((id.getStringClaim("nonce") != nonce && !(renewal!=null && id.getStringClaim("nonce")==null)) || id.subject != token.subject || id.getStringClaim("sid") != sid ||
             token.getStringClaim("azp") != clientId || token.getStringClaim("typ") != "Bearer" ||
             id.getBooleanClaim("email_verified") != true ||
             (id.getStringClaim("azp")?.let { it != clientId } == true ||
                 (id.audience.size > 1 && id.getStringClaim("azp") != clientId))) throw AuthRejected()
         val authTime = id.getDateClaim("auth_time") ?: throw AuthRejected()
-        if (authTime.toInstant().isBefore(started.minusSeconds(30)) || authTime.toInstant().isAfter(Instant.now())) throw AuthRejected()
+        if (authTime.toInstant().isAfter(Instant.now()) ||
+            (renewal==null && authTime.toInstant().isBefore(started.minusSeconds(30))) ||
+            (renewal!=null && (token.subject!=renewal.subject || sid!=renewal.sid || authTime.time!=renewal.authTime))) throw AuthRejected()
         val requiredRole = if (channel == "native") "applicant" else config.browserRole
         val roles = token.getJSONObjectClaim("realm_access")?.get("roles") as? List<*>
         if (roles?.contains(requiredRole) != true && !(channel == "browser" && config.clientId == "issuer-bff-p2" && roles?.contains("issuer-operator") == true)) throw AuthRejected()
@@ -218,6 +238,7 @@ class OidcService(val config: OidcConfig, private val registry: OidcRegistry? = 
         registry?.registerSession(config.issuer, token.subject, hash(opaque), sid,
             authTime.toInstant().epochSecond, session.expires.epochSecond, started)
         sessions[hash(opaque)] = session
+        if(channel=="native") renewals[hash(opaque)]=renewal ?: NativeRenewal(token.subject,sid,nonce,authTime.time,started,started.plusSeconds(604800))
         return opaque
     }
     fun session(opaque: String, channel: String): AppSession {
@@ -237,5 +258,5 @@ class OidcService(val config: OidcConfig, private val registry: OidcRegistry? = 
         val value = session(opaque,channel)
         return registry?.accountId(hash(opaque)) ?: hash(config.issuer + "\u0000" + value.subject)
     }
-    fun logout(opaque: String) { registry?.revoke(hash(opaque)); sessions.remove(hash(opaque)) }
+    fun logout(opaque: String) { registry?.revoke(hash(opaque)); sessions.remove(hash(opaque));renewals.remove(hash(opaque)) }
 }

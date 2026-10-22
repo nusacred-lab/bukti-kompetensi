@@ -18,11 +18,33 @@ their exact paths to the native contract's string list and binds the full claim
 descriptors into the preview hash. Consent must return the same paths; unsupported
 selective or optional claims fail closed for this fixed competency profile.
 
-Only an opaque expiring session, link and operation reference persist locally,
-encrypted with an Android Keystore AES-GCM key. Credential contents and IdP tokens
-remain in memory. The APK stores no holder signing key. Backup and device-transfer
-rules exclude app data; a copied encrypted record cannot authenticate after the
-Keystore key is lost. Logout clears local access and pending request state.
+Access and ID tokens remain ephemeral. After the initial browser/PKCE login, the
+app may retain a rotating refresh token only when the user enables strong device
+biometrics. A per-use biometric Android Keystore key wraps a random 256-bit vault
+key; the vault encrypts the refresh token, previous opaque session and deadlines
+with AES-GCM. Authenticated vault updates rotate the token without another prompt
+while the app remains unlocked. No refresh token is written under the legacy
+non-biometric session key. Backgrounding the protected wallet drops its in-memory
+vault key and identity; returning requires the system biometric prompt. Device PIN
+is not silently substituted for the strong-biometric key; secure OIDC sign-in is
+the fallback. Changed enrollment or a missing Keystore key requires fresh login.
+
+The approved policy is a five-minute access token, 24-hour refresh inactivity limit
+and seven-day absolute login maximum. Offline access is not requested. The app
+consumes its saved refresh token before dispatch, persists the rotated replacement
+only after success, and never blindly retries a token after a lost response.
+`POST /api/v1/sessions/renew` accepts refreshed access/ID proofs only for the same
+subject, IdP sid, original authentication time and recovery revision. It rotates
+the opaque session and invalidates pending local reviews. A reset, revoked session,
+logout or backend restart cannot be bypassed by refresh. Backend renewal anchors
+are bounded and memory-only; restart deliberately requires a new interactive login.
+
+Credential contents and holder signing keys never persist in the APK. Backup and
+device-transfer rules exclude all app data. Copied ciphertext cannot authenticate
+without the original Keystore key and user biometric. Logout erases the vault,
+wrapping key, opaque session, context and operation, and attempts server-side session
+and refresh-token revocation. Offline logout cannot promise immediate remote
+revocation; local erasure is immediate and IdP deadlines remain enforced.
 
 A restored activity checks an existing operation and retrieves an owned pending
 review without approving it. An ambiguous operation exposes a status check and is

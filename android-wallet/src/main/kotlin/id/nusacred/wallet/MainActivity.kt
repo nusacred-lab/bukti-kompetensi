@@ -7,6 +7,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.CancellationSignal
+import android.hardware.biometrics.BiometricManager
+import android.hardware.biometrics.BiometricPrompt
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -43,6 +46,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var authorization:AuthorizationService
     private lateinit var store:SessionStore
     private var generation=0
+    private var walletLocked by mutableStateOf(false)
+    private var biometricEnabled by mutableStateOf(false)
+    private var biometricPrompt:CancellationSignal?=null
     private var ticket:String?=null
     private var busy by mutableStateOf(false)
     private var signedIn by mutableStateOf(false)
@@ -77,6 +83,7 @@ class MainActivity : ComponentActivity() {
                     val session=obj("/auth/native/session","POST",JSONObject().put("ticket",pending)
                         .put("access_token",tokens.accessToken).put("id_token",tokens.idToken)).getString("session")
                     account(session,g)
+                    ui(g) { tokens.refreshToken?.let { store.setRefresh(it,System.currentTimeMillis()/1000+604800) } }
                 } }
             }
         }
@@ -84,14 +91,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
         authorization=AuthorizationService(this);store=SessionStore(this)
+        biometricEnabled=store.protected();walletLocked=store.locked()
         pendingLink=store.context();expiresAt=store.expiresAt()
         if(savedInstanceState==null) consumeIntent(intent) else setIntent(Intent(intent).setData(null))
         setContent {
             LaunchedEffect(expiresAt) {
                 if(expiresAt>0) {
                     delay(((expiresAt-System.currentTimeMillis()/1000).coerceAtLeast(0))*1000)
-                    generation++;store.clearSession();clearIdentity()
-                    inform("Your session has ended. Sign in again to continue.")
+                    if(store.refreshToken()!=null) renewAuthentication()
+                    else { generation++;store.clearSession();clearIdentity();inform("Your session has ended. Sign in again to continue.") }
                 }
             }
             BackHandler(enabled=scanning || selected!=null || preview!=null || page!="wallet") {
@@ -99,7 +107,7 @@ class MainActivity : ComponentActivity() {
             }
             WalletApp()
         }
-        store.load()?.let { submit { g -> account(it,g) } }
+        if(!walletLocked) store.load()?.let { submit { g -> account(it,g) } }
     }
     @Composable private fun WalletApp() {
         Column(Modifier.fillMaxSize().background(Palette.Paper).windowInsetsPadding(WindowInsets.safeDrawing)) {
@@ -111,6 +119,7 @@ class MainActivity : ComponentActivity() {
                 Column(Modifier.fillMaxSize().verticalScroll(remember(signedIn,scanning,page,selected?.id,preview?.optString("id")) { ScrollState(0) }).padding(22.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
                     if(notice.isNotEmpty()) Notice(notice,errorNotice)
                     when {
+                        walletLocked -> LockedScreen()
                         scanning -> ScannerScreen()
                         preview!=null -> ConsentScreen(preview!!)
                         selected!=null -> DetailScreen(selected!!)
@@ -130,6 +139,72 @@ class MainActivity : ComponentActivity() {
                     NavItem("wallet","wallet","Wallet");NavItem("scan","scan","Scan");NavItem("account","shield","Account")
                 }
             }
+        }
+    }
+    @Composable private fun LockedScreen() {
+        Eyebrow("YOUR WALLET, PROTECTED");Heading("Welcome back.\nMake it yours.",30)
+        Label("Unlock with your device biometrics to continue. Nothing is shared until you review and approve.",15,Palette.Muted)
+        Action("Unlock with biometrics",Modifier.fillMaxWidth(),icon="shield",enabled=!busy) { authenticateVault() }
+        Action("Sign in another way",Modifier.fillMaxWidth(),primary=false,enabled=!busy) { begin() }
+        Label("Provided by PT Dompet Identitas Nusantara (demo)",12,Palette.Muted)
+    }
+    private fun authenticateVault() {
+        if(busy) return
+        if(getSystemService(BiometricManager::class.java).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)!=BiometricManager.BIOMETRIC_SUCCESS) {
+            inform("Strong device biometrics are unavailable. You can sign in securely instead.",true);return
+        }
+        val restoring=store.protected();val expected=generation
+        try {
+            val cipher=store.protectionCipher()
+            val cancel=CancellationSignal();biometricPrompt=cancel;busy=true
+            BiometricPrompt.Builder(this).setTitle(if(restoring) "Unlock NusaCred Wallet" else "Protect your wallet")
+                .setSubtitle("PT Dompet Identitas Nusantara")
+                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+                .setNegativeButton("Cancel",mainExecutor) { _,_ -> busy=false }
+                .build().authenticate(BiometricPrompt.CryptoObject(cipher),cancel,mainExecutor,object:BiometricPrompt.AuthenticationCallback() {
+                    override fun onAuthenticationSucceeded(result:BiometricPrompt.AuthenticationResult) { ui(expected) {
+                        busy=false
+                        try {
+                            store.completeProtection(requireNotNull(result.cryptoObject?.cipher));biometricEnabled=true;walletLocked=false
+                            if(restoring) {
+                                val session=store.load()
+                                if(session!=null) submit { g -> account(session,g) } else renewAuthentication()
+                            } else inform("Biometric unlock is enabled. You can return without entering your password while your account login remains valid.")
+                        } catch(_:Exception) { store.clear();biometricEnabled=false;walletLocked=false;clearIdentity();inform("Device protection changed. Sign in again to protect your wallet.",true) }
+                    } }
+                    override fun onAuthenticationError(code:Int,message:CharSequence) { ui(expected) { busy=false;inform("Wallet remains protected. Try biometrics again or sign in securely.") } }
+                })
+        } catch(_:Exception) { store.clear();biometricEnabled=false;walletLocked=false;clearIdentity();inform("Device protection changed. Sign in again.",true) }
+    }
+    private fun renewAuthentication() {
+        if(busy) return
+        val refresh=store.refreshToken() ?: run { store.clearSession();clearIdentity();inform("Sign in again to continue.");return }
+        val previous=store.renewalSession() ?: return
+        val until=store.refreshUntil();val expected=generation;busy=true
+        // Consume before dispatch: a lost rotating-token response must require login, never blind replay.
+        store.consumeRefresh()
+        AuthorizationServiceConfiguration.fetchFromIssuer(Uri.parse(BuildConfig.OIDC_ISSUER)) { config,error -> ui(expected) {
+            if(config==null || error!=null) { store.clearSession();clearIdentity();inform("Reconnect and sign in again to continue.",true) }
+            else authorization.performTokenRequest(TokenRequest.Builder(config,"android-wallet-p2")
+                .setGrantType(GrantTypeValues.REFRESH_TOKEN).setRefreshToken(refresh).build()) { tokens,failure -> ui(expected) {
+                if(tokens?.accessToken==null || tokens.idToken==null || tokens.refreshToken==null || failure!=null) {
+                    store.clearSession();clearIdentity();inform("Your account login has ended. Sign in again to continue.")
+                } else {
+                    busy=false
+                    submit { g ->
+                        val next=obj("/api/v1/sessions/renew","POST",JSONObject().put("session",previous).put("access_token",tokens.accessToken).put("id_token",tokens.idToken)).getString("session")
+                        ui(g) { store.clearOperation();preview=null }
+                        account(next,g)
+                        ui(g) { store.setRefresh(tokens.refreshToken!!,until) }
+                    }
+                }
+            } }
+        } }
+    }
+    override fun onStop() {
+        super.onStop();biometricPrompt?.cancel();biometricPrompt=null
+        if(::store.isInitialized && store.protected()) {
+            generation++;store.lock();clearIdentity();walletLocked=true
         }
     }
     @Composable private fun RowScope.NavItem(id:String,icon:String,label:String) {
@@ -239,6 +314,10 @@ class MainActivity : ComponentActivity() {
             Label("Credentials and signing keys stay with your custodian. Your session on this phone is protected by Android Keystore.",14,Palette.Muted)
             Label("If you reset your password, sign in again. Old sessions and unapproved requests cannot be reused.",14,Palette.Muted)
         }
+        if(!biometricEnabled && store.refreshToken()!=null) {
+            Action("Enable biometric unlock",Modifier.fillMaxWidth(),icon="shield",enabled=!busy) { authenticateVault() }
+            Label("Keep your account signed in for up to 7 days, with a 24-hour inactivity limit. Your refresh token is protected by device biometrics.",12,Palette.Muted)
+        } else if(biometricEnabled) Label("Biometric unlock enabled · account login up to 7 days",12,Palette.Teal)
         Action("Open secure sign-in & recovery",Modifier.fillMaxWidth(),primary=false,enabled=!busy) {
             begin()
         }
@@ -327,6 +406,7 @@ class MainActivity : ComponentActivity() {
         }
     }
     private fun begin() {
+        store.clearSession();walletLocked=false;biometricEnabled=false;clearIdentity()
         submit(releaseBusy=false) { g ->
             val flow=obj("/auth/native/start","POST",JSONObject())
             check(flow.getString("issuer")==BuildConfig.OIDC_ISSUER && flow.getString("client_id")=="android-wallet-p2")
@@ -429,8 +509,18 @@ class MainActivity : ComponentActivity() {
     private fun dismiss() { store.clearContext();store.clearOperation();pendingLink=null;preview=null;uncertain=false }
     private fun clearIdentity() { signedIn=false;expiresAt=0;credentials=emptyList();selected=null;preview=null;email="";recipient="";busy=false;uncertain=false }
     private fun signOut() {
-        val token=store.load();generation++;store.clear();clearIdentity();pendingLink=null;page="wallet";ticket=null;inform("You are signed out. Your credentials remain safely stored.")
+        val token=store.renewalSession();val refresh=store.refreshToken();generation++;store.clear();clearIdentity();walletLocked=false;biometricEnabled=false;pendingLink=null;page="wallet";ticket=null;inform("You are signed out. Your credentials remain safely stored.")
         if(token!=null) network.execute { try { obj("/auth/logout","POST",JSONObject(),token) } catch(_:Exception) { /* Local access is already cleared. */ } }
+        if(refresh!=null) network.execute { revokeRefresh(refresh) }
+    }
+    private fun revokeRefresh(refresh:String) {
+        try {
+            val connection=URL(BuildConfig.OIDC_ISSUER+"/protocol/openid-connect/revoke").openConnection() as HttpURLConnection
+            connection.instanceFollowRedirects=false;connection.connectTimeout=10000;connection.readTimeout=10000
+            connection.requestMethod="POST";connection.doOutput=true;connection.setRequestProperty("Content-Type","application/x-www-form-urlencoded")
+            connection.outputStream.use { it.write(("client_id=android-wallet-p2&token_type_hint=refresh_token&token="+java.net.URLEncoder.encode(refresh,"UTF-8")).toByteArray()) }
+            connection.inputStream.use { it.read(ByteArray(1024)) };connection.disconnect()
+        } catch(_:Exception) { /* Offline logout always erases local access; server expiry remains bounded. */ }
     }
     private fun startScan() {
         notice="";selected=null

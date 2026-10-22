@@ -74,6 +74,19 @@ fun Application.authRoutes(auth: OidcService) {
                 call.reply(mapOf("session" to opaque))
             }
         }
+        post("/api/v1/sessions/renew") {
+            call.api {
+                rate.rate("auth:"+call.request.local.remoteHost,30)
+                if(call.request.cookies[SESSION_COOKIE]!=null) throw AuthRejected()
+                val values=call.body()
+                if(values.keys!=setOf("session","access_token","id_token")) throw AuthRejected()
+                val opaque=withContext(Dispatchers.IO) {
+                    auth.renewNative(values["session"] as? String ?: throw AuthRejected(),
+                        values["access_token"] as? String ?: throw AuthRejected(),values["id_token"] as? String ?: throw AuthRejected())
+                }
+                call.reply(mapOf("session" to opaque))
+            }
+        }
         post("/api/v1/sessions") {
             call.api {
                 rate.rate("auth:"+call.request.local.remoteHost,30)
@@ -163,10 +176,13 @@ fun Application.authRoutes(auth: OidcService) {
             call.guarded {
                 rate.rate("auth:"+call.request.local.remoteHost,30)
                 val (opaque, channel) = call.identity()
-                val session = withContext(Dispatchers.IO) { auth.session(opaque, channel) }
-                if (channel == "browser" && (call.request.headers[HttpHeaders.Origin] != auth.config.portalOrigin ||
-                    call.request.headers["X-CSRF-Token"] != session.csrf)) throw AuthRejected()
-                auth.logout(opaque)
+                if(channel=="native") withContext(Dispatchers.IO) { auth.logoutNative(opaque) }
+                else {
+                    val session=withContext(Dispatchers.IO) { auth.session(opaque,channel) }
+                    if(call.request.headers[HttpHeaders.Origin] != auth.config.portalOrigin ||
+                        call.request.headers["X-CSRF-Token"] != session.csrf) throw AuthRejected()
+                    auth.logout(opaque)
+                }
                 if (channel == "browser") call.cookie(SESSION_COOKIE, "", 0)
                 call.reply(mapOf("signed_out" to true))
             }

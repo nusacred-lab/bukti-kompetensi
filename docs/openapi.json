@@ -4798,6 +4798,186 @@
           "CANDIDATE"
         ]
       }
+    },
+    "/api/v1/sessions/renew": {
+      "post": {
+        "operationId": "renew_native_session",
+        "summary": "Renew a native session using refreshed OIDC proofs bound to the original login",
+        "tags": [
+          "wallet"
+        ],
+        "x-host": "wallet",
+        "x-implementation-phase": "P5",
+        "x-ownership": "same native subject, sid, original auth_time and recovery revision",
+        "description": "Native only; browser cookies are rejected. A previous opaque session and newly refreshed access/ID tokens must match the original nonce-bound login. Recovery, revocation, logout, restart and a seven-day absolute deadline close renewal. The previous opaque session is revoked after success. IdP refresh tokens are never sent to this endpoint.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Required for browser mutation; exact configured origin."
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Required with browser cookies."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role, organization, origin or CSRF rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Object missing or invisible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Expired or consumed context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited; Retry-After in seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency failure or reconciliation required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "session": {
+                    "type": "string",
+                    "minLength": 32,
+                    "maxLength": 128
+                  },
+                  "access_token": {
+                    "type": "string",
+                    "minLength": 32,
+                    "maxLength": 16384
+                  },
+                  "id_token": {
+                    "type": "string",
+                    "minLength": 32,
+                    "maxLength": 16384
+                  }
+                },
+                "required": [
+                  "session",
+                  "access_token",
+                  "id_token"
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

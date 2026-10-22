@@ -11,7 +11,7 @@ android {
         minSdk = 30
         targetSdk = 37
         testInstrumentationRunner = "id.nusacred.wallet.DeviceSecurityProof"
-        versionCode = 2
+        versionCode = 3
         versionName = "0.5.0-p5"
         manifestPlaceholders["appAuthRedirectScheme"] = "id.nusacred.wallet"
         buildConfigField("String", "WALLET_ORIGIN", "\"https://wallet-p2.demo.inoerawan.id\"")

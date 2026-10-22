@@ -130,6 +130,12 @@ class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) 
         return a
     }
     @Synchronized override fun accountId(tokenHash: String): String = authorize(tokenHash).id
+    @Synchronized override fun authorizeRenewal(tokenHash: String): AccountAccess {
+        val id=query("""SELECT a.id FROM accounts a JOIN app_sessions s ON s.account_id=a.id
+            WHERE s.token_hash=? AND s.revoked=0 AND s.revision=a.revision AND a.gate='OPEN'""",tokenHash) { it.getString(1) }.singleOrNull()
+            ?: throw AccessDenied()
+        return account(id)
+    }
     @Synchronized override fun revoke(tokenHash: String) { execute("UPDATE app_sessions SET revoked=1 WHERE token_hash=?", tokenHash) }
     @Synchronized fun <T> read(tokenHash: String, block: () -> T): T {
         authorize(tokenHash)
