@@ -9,6 +9,7 @@ import java.util.UUID
 /** Platform-only device proof. Run solely against the disposable .securityproof APK. */
 class DeviceSecurityProof: Instrumentation() {
     private var mode=""
+    private var stage="start"
     override fun onCreate(arguments:Bundle?) { super.onCreate(arguments);mode=arguments?.getString("mode") ?: "";start() }
     override fun onStart() {
         try {
@@ -51,27 +52,34 @@ class DeviceSecurityProof: Instrumentation() {
                     store.clear()
                 }
                 "biometric-guard" -> {
+                    stage="seed"
                     store.clear()
                     store.save(UUID.randomUUID().toString(),System.currentTimeMillis()/1000+300)
                     store.setRefresh(UUID.randomUUID().toString(),System.currentTimeMillis()/1000+604800)
                     var denied=false
+                    stage="unauthenticated-crypto"
                     try { store.completeProtection(store.protectionCipher()) }
                     catch(e:Exception) {
                         denied=e is android.security.keystore.UserNotAuthenticatedException ||
                             e.cause is android.security.KeyStoreException
                     }
                     check(denied) { "Biometric key used without per-operation authentication" }
+                    stage="key-metadata"
                     val keys=KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
                     val key=keys.getKey("nusacred-biometric-vault",null) as javax.crypto.SecretKey
                     val info=javax.crypto.SecretKeyFactory.getInstance(key.algorithm,"AndroidKeyStore")
                         .getKeySpec(key,android.security.keystore.KeyInfo::class.java) as android.security.keystore.KeyInfo
-                    check(info.isUserAuthenticationRequired && info.userAuthenticationValidityDurationSeconds == -1)
+                    stage="per-use-auth-"+info.userAuthenticationValidityDurationSeconds
+                    // Newer devices report the API-30 zero timeout; older metadata uses -1.
+                    // The unauthenticated cryptographic operation above must also be rejected.
+                    check(info.isUserAuthenticationRequired && info.userAuthenticationValidityDurationSeconds in -1..0)
+                    stage="strong-auth-"+info.userAuthenticationType
                     check(info.userAuthenticationType==android.security.keystore.KeyProperties.AUTH_BIOMETRIC_STRONG)
                     store.clear()
                 }
                 else -> error("Unknown proof mode")
             }
             finish(Activity.RESULT_OK,Bundle().apply { putString("proof","PASS: "+mode) })
-        } catch(_:Exception) { finish(Activity.RESULT_CANCELED,Bundle().apply { putString("proof","FAIL: "+mode) }) }
+        } catch(e:Exception) { finish(Activity.RESULT_CANCELED,Bundle().apply { putString("proof","FAIL: $mode ($stage, ${e.javaClass.simpleName})") }) }
     }
 }
