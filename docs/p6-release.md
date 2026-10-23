@@ -23,3 +23,9 @@ installation host needs Docker Compose, Python 3 and OpenSSL, without Gradle, a
 JDK, an Android SDK or an application/fork checkout. Install the APK separately.
 Public networking, external backups, operator alerts and participant access
 remain G7 acceptance work.
+
+P6 source scanning includes Android lint and emulator tooling lockfiles. The
+reviewed policy upgrades vulnerable Netty 4.1 requests to 4.1.138.Final and Bouncy
+Castle requests below 1.86 to 1.86, without lowering newer versions. New hashes
+must match the review ledger; metadata discovery is never accepted automatically.
+Runtime graphs are scanned separately.
