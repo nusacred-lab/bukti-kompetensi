@@ -382,12 +382,6 @@ private fun tabs(service:String)=when(service) {
         if(profile==null) EmptyState("Profile unavailable","Refresh the page to retrieve the issuer's current publication.")
         else IssuerProfileDetails(profile)
     }
-    Card(Modifier.fillMaxWidth()) {
-        Heading("A company makes its own trust decision",20)
-        Label("Compare this organization and its identity with a contact or authoritative directory you already know. A valid signature proves control of a key; it does not establish accreditation.",14,Palette.Muted)
-        Label("This demonstration has no real accreditation record or certification contact. Use the demo walkthrough verification method when trying the approval flow.",13,Palette.Muted)
-        Action("Continue to Karya Instalasi",primary=false,icon="arrow") { navigate("https://karya-instalasi.demo.inoerawan.id/") }
-    }
 }
 @Composable private fun IssuerTrustWorkspace(s:PortalState,act:(suspend ()->Unit)->Unit) {
     PageHeading("TRUST POLICY","Review the issuer. Then decide.","Karya Instalasi independently approves its credential issuers. LSP Nusantara publishes its own profile; the wallet provider does not make this decision.") {
