@@ -27,6 +27,10 @@ class DomainStore(path: Path, val service: String, private val now: () -> Long =
         INSERT INTO candidate_bindings SELECT DISTINCT organization,candidate,recipient FROM assessments;
         ALTER TABLE issuance_offers ADD COLUMN offer_url TEXT;
         ALTER TABLE verification_sessions ADD COLUMN request_url TEXT
+    """, """
+        CREATE TABLE issuer_reviews(id TEXT PRIMARY KEY, actor TEXT NOT NULL, organization TEXT NOT NULL, profile_json TEXT NOT NULL, profile_hash TEXT NOT NULL, created INTEGER NOT NULL, expires INTEGER NOT NULL);
+        CREATE TABLE issuer_approvals(id TEXT PRIMARY KEY, review_id TEXT NOT NULL REFERENCES issuer_reviews(id), actor TEXT NOT NULL, organization TEXT NOT NULL, identity TEXT NOT NULL, method TEXT NOT NULL, note TEXT NOT NULL, approved_at INTEGER NOT NULL);
+        ALTER TABLE trusted_issuers ADD COLUMN approval_id TEXT REFERENCES issuer_approvals(id)
     """))
     init {
         require(service in setOf("issuer", "company"))
@@ -103,17 +107,62 @@ class DomainStore(path: Path, val service: String, private val now: () -> Long =
         val id = remove ?: hash(requireNotNull(identity))
         val (operation,fresh) = reserve(p,if(remove == null) "trust:add" else "trust:remove",key,identity ?: remove!!)
         val changed = if(!fresh) 0 else if (remove != null) sql.execute("DELETE FROM trusted_issuers WHERE id=? AND organization=?",id,p.organization())
-            else sql.execute("INSERT OR IGNORE INTO trusted_issuers VALUES(?,?,?)",id,p.organization(),identity)
+            else sql.execute("INSERT OR IGNORE INTO trusted_issuers(id,organization,identity) VALUES(?,?,?)",id,p.organization(),identity)
         if (changed == 1) { sql.execute("UPDATE trust_revisions SET revision=revision+1 WHERE organization=?",p.organization()); audit(p,"TRUST_CHANGED",id) }
         sql.execute("UPDATE operations SET state='COMPLETED' WHERE id=?",operation)
         mapOf("id" to id,"revision" to revision(p.organization()))
     }
     private fun revision(org: String): Long = sql.query("SELECT revision FROM trust_revisions WHERE organization=?",org) { it.getLong(1) }.singleOrNull() ?: 0
+    fun requireCompany(p: Principal) { check(service == "company"); permit(p) }
+    fun reviewIssuer(p: Principal, profile: IssuerProfile, key: String): Map<String, Any?> = sql.transaction {
+        requireCompany(p)
+        val (id,fresh) = reserve(p,"issuer:review",key,profile.digest)
+        if(fresh) {
+            sql.execute("INSERT INTO issuer_reviews VALUES(?,?,?,?,?,?,?)",id,p.account,p.organization(),json(profile.publicData()),profile.digest,now(),now()+900)
+            sql.execute("UPDATE operations SET state='COMPLETED' WHERE id=?",id)
+            audit(p,"ISSUER_REVIEW_OPENED",id)
+        }
+        issuerReview(p,id)
+    }
+    fun issuerReview(p: Principal, id: String): Map<String, Any?> {
+        requireCompany(p)
+        return sql.query("SELECT profile_json,profile_hash,created,expires FROM issuer_reviews WHERE id=? AND actor=? AND organization=?",id,p.account,p.organization()) {
+            mapOf("id" to id,"profile" to JSONObjectUtils.parse(it.getString(1)),"profileHash" to it.getString(2),"reviewedAt" to it.getLong(3),"expiresAt" to it.getLong(4))
+        }.singleOrNull() ?: reject(404,"NOT_FOUND","Review not found for your account.")
+    }
+    fun approveIssuer(p: Principal, reviewId: String, profile: IssuerProfile, method: String, note: String, confirmed: String, key: String): Map<String, Any?> = sql.transaction {
+        requireCompany(p)
+        if(confirmed != "true" || method !in setOf("official-contact","authoritative-directory","demo-walkthrough") || note.trim().length !in 20..1000 || note.any { it.isISOControl() })
+            reject(400,"VERIFICATION_REQUIRED","Record how you independently verified the organization and its published identity.")
+        val review=issuerReview(p,reviewId)
+        val payload=json(mapOf("reviewId" to reviewId,"method" to method,"note" to note.trim(),"confirmed" to confirmed))
+        val (operation,fresh)=reserve(p,"issuer:approve",key,payload)
+        val reviewedIdentity=(review["profile"] as Map<*, *>)["identity"] as String
+        val id=hash(reviewedIdentity)
+        if(fresh) {
+            if((review["expiresAt"] as Long) <= now()) reject(410,"REVIEW_EXPIRED","Open a fresh issuer review before approval.")
+            if(review["profileHash"] != profile.digest) reject(409,"ISSUER_PROFILE_CHANGED","The published identity changed. Review the current profile before approval.")
+            // One approval per review, even when a caller supplies a different idempotency key.
+            if(sql.query("SELECT id FROM issuer_approvals WHERE review_id=?",reviewId) { it.getString(1) }.isNotEmpty())
+                reject(409,"REVIEW_ALREADY_APPROVED","This review was already approved. Open a new review to update it.")
+            sql.execute("INSERT INTO issuer_approvals VALUES(?,?,?,?,?,?,?,?)",operation,reviewId,p.account,p.organization(),profile.identity,method,note.trim(),now())
+            sql.execute("INSERT INTO trusted_issuers(id,organization,identity,approval_id) VALUES(?,?,?,?) ON CONFLICT(organization,identity) DO UPDATE SET approval_id=excluded.approval_id",id,p.organization(),profile.identity,operation)
+            sql.execute("INSERT OR IGNORE INTO trust_revisions VALUES(?,0)",p.organization())
+            sql.execute("UPDATE trust_revisions SET revision=revision+1 WHERE organization=?",p.organization())
+            sql.execute("UPDATE operations SET state='COMPLETED' WHERE id=?",operation)
+            audit(p,"ISSUER_TRUST_APPROVED",operation)
+        }
+        mapOf("id" to id,"approvalId" to operation,"revision" to revision(p.organization()))
+    }
     fun trusted(p: Principal, offset: Int, limit: Int): Map<String, Any?> = sql.transaction {
-        check(service == "company"); permit(p)
+        requireCompany(p)
         if (offset !in 0..10000 || limit !in 1..100) reject(400,"INVALID_PAGE","Invalid pagination.")
-        val rows = sql.query("SELECT id,identity FROM trusted_issuers WHERE organization=? ORDER BY id LIMIT ? OFFSET ?",p.organization(),limit+1,offset) {
-            mapOf("id" to it.getString(1),"identity" to it.getString(2))
+        val rows = sql.query("""SELECT t.id,t.identity,a.actor,a.approved_at,a.method,a.note,r.profile_json FROM trusted_issuers t
+            LEFT JOIN issuer_approvals a ON a.id=t.approval_id LEFT JOIN issuer_reviews r ON r.id=a.review_id
+            WHERE t.organization=? ORDER BY t.id LIMIT ? OFFSET ?""",p.organization(),limit+1,offset) {
+            mapOf("id" to it.getString(1),"identity" to it.getString(2),"approvedBy" to it.getString(3),"approvedAt" to it.getObject(4),
+                "verificationMethod" to it.getString(5),"verificationNote" to it.getString(6),"profile" to it.getString(7)?.let(JSONObjectUtils::parse),
+                "reviewStatus" to if(it.getString(3) == null) "LEGACY_APPROVAL" else "REVIEWED")
         }
         mapOf("items" to rows.take(limit),"offset" to offset,"limit" to limit,"nextOffset" to if(rows.size>limit) offset+limit else null,"revision" to revision(p.organization()))
     }
@@ -242,6 +291,26 @@ class DomainStore(path: Path, val service: String, private val now: () -> Long =
         }
         sql.execute("INSERT OR IGNORE INTO verification_results VALUES(?,?,?,?,?,?)",id,
             if(reason == "VERIFIED") "FULFILLED" else "NOT_FULFILLED",reason,now(),revision(job.first),BUSINESS_POLICY_VERSION) == 1
+    }
+    fun assessments(p: Principal): Map<String,Any?> = sql.transaction {
+        check(service == "issuer");permit(p)
+        val items=sql.query("""SELECT a.*,o.id AS offer_id,o.expires,o.offer_url,p.state FROM assessments a
+            LEFT JOIN issuance_offers o ON o.id=(SELECT id FROM issuance_offers WHERE assessment_id=a.id ORDER BY expires DESC,id DESC LIMIT 1)
+            LEFT JOIN operations p ON p.id=o.operation_id WHERE a.organization=? ORDER BY a.rowid DESC LIMIT 100""",p.organization()) {
+            mapOf("id" to it.getString("id"),"candidateId" to it.getString("candidate"),"candidateAccountId" to it.getString("recipient"),
+                "competencyCode" to it.getString("competency"),"assessmentResult" to it.getString("result"),"offerId" to it.getString("offer_id"),
+                "offerState" to it.getString("state"),"offerExpiresAt" to it.getLong("expires"),"offerUrl" to it.getString("offer_url"))
+        }
+        mapOf("items" to items,"limit" to 100)
+    }
+    fun jobs(): Map<String,Any?> = mapOf("items" to sql.query("SELECT id,title,competency,assessment,revision FROM jobs ORDER BY id LIMIT 100") {
+        mapOf("id" to it.getString(1),"title" to it.getString(2),"competencyCode" to it.getString(3),"assessmentResult" to it.getString(4),"revision" to it.getLong(5))
+    },"limit" to 100)
+    fun results(p: Principal): Map<String,Any?> {
+        check(service == "company");permit(p)
+        val ids=sql.query("SELECT id FROM verification_sessions WHERE organization=? ORDER BY rowid DESC LIMIT 100",p.organization()) { it.getString(1) }
+        // Lists use stored snapshots. Only an explicitly selected record polls the verifier.
+        return mapOf("items" to ids.map { storedResult(p,it) },"limit" to 100)
     }
     override fun close() = sql.close()
 }

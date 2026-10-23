@@ -1,0 +1,5 @@
+# Historical synthetic idempotency labels in the P5 consent regression test.
+# These are request-deduplication fixtures, not authentication credentials.
+# Current tests generate the value at runtime. Keep exceptions to these exact findings.
+57626da4d265b2ac2dbce116bb024a1df5d8a4af:custodian-backend/src/test/kotlin/id/nusacred/custodian/OperationOutcomeTest.kt:generic-api-key:67
+57626da4d265b2ac2dbce116bb024a1df5d8a4af:custodian-backend/src/test/kotlin/id/nusacred/custodian/OperationOutcomeTest.kt:generic-api-key:73

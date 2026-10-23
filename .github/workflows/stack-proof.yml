@@ -30,6 +30,8 @@ jobs:
         run: |
           python3 ci/verify_dependency_review.py
           python3 ci/check_api_contract.py
+      - name: Verify initial portal loading behavior
+        run: node ci/test_portal_boot.mjs
       - name: Build JVM, Android and WebAssembly with strict dependency checks
         env:
           GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home

@@ -12,6 +12,28 @@ import org.junit.Test
 class AccessRegistryTest {
     private val issuer = "https://auth.example.test/realms/test"
     private fun path() = Files.createTempDirectory("registry-test-").resolve("access.db")
+    @Test fun `renewal may cross access expiry but never revocation recovery or restart`() {
+        var time=Instant.ofEpochSecond(20000)
+        val file=path()
+        AccessRegistry(file) { time }.use { r ->
+            for(id in listOf("renewable","logout","recovery"))
+                r.registerSession(issuer,"alice",id,"same-idp-session",time.epochSecond,time.plusSeconds(300).epochSecond)
+            time=time.plusSeconds(301)
+            assertFailsWith<AccessDenied> { r.authorize("renewable") }
+            assertEquals("OPEN",r.authorizeRenewal("renewable").gate)
+            r.revoke("logout")
+            assertFailsWith<AccessDenied> { r.authorizeRenewal("logout") }
+            val operation=randomToken();val revision=r.beginRecovery(issuer,"alice",operation)
+            for(id in listOf("renewable","recovery")) assertFailsWith<AccessDenied> { r.authorizeRenewal(id) }
+            r.completeRecovery(issuer,"alice",operation,revision)
+            assertFailsWith<AccessDenied> { r.authorizeRenewal("renewable") }
+            time=time.plusSeconds(1)
+            r.registerSession(issuer,"alice","fresh","new-idp-session",time.epochSecond,time.plusSeconds(300).epochSecond,time)
+            assertEquals("OPEN",r.authorizeRenewal("fresh").gate)
+            assertFailsWith<AccessDenied> { r.authorizeRenewal("recovery") }
+        }
+        AccessRegistry(file) { time }.use { r -> assertFailsWith<AccessDenied> { r.authorizeRenewal("fresh") } }
+    }
     private fun login(r: AccessRegistry, subject: String = "alice", token: String = randomToken(),
                       at: Long = Instant.now().epochSecond): String {
         r.registerSession(issuer, subject, hash(token), randomToken(), at, Instant.now().plusSeconds(600).epochSecond)

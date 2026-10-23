@@ -10,12 +10,15 @@ kotlin {
         binaries.executable()
     }
     sourceSets {
-        wasmJsMain.dependencies {
+        wasmJsMain {
+            kotlin.srcDir("../ui-kit/src")
+            dependencies {
     implementation(project(":shared-contracts"))
             implementation(libs.kotlinx.browser)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.ui)
+            }
         }
     }
 }

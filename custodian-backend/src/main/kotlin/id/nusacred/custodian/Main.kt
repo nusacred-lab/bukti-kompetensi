@@ -1,5 +1,7 @@
 package id.nusacred.custodian
 
+import id.nusacred.common.portalRoutes
+
 import io.ktor.http.ContentType
 import io.ktor.server.application.Application
 import io.ktor.server.engine.embeddedServer
@@ -53,6 +55,8 @@ fun main() {
             RecoveryAuthenticator(requireNotNull(System.getenv("OIDC_ISSUER")), recoverySecret))
         auth?.let { authRoutes(it) }
         if (auth != null && wallet != null) { walletRoutes(auth, wallet); contractRoutes(auth,wallet) }
+        portalRoutes("custodian")
+        if(auth != null && registry != null) custodianStatusRoutes(registry,id.nusacred.common.RequestGuard.oidc(auth))
         stackProbe(portalRoot)
     }.start(wait = true)
 }

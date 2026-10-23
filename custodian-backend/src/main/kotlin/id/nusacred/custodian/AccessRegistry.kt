@@ -130,7 +130,26 @@ class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) 
         return a
     }
     @Synchronized override fun accountId(tokenHash: String): String = authorize(tokenHash).id
+    @Synchronized override fun authorizeRenewal(tokenHash: String): AccountAccess {
+        val id=query("""SELECT a.id FROM accounts a JOIN app_sessions s ON s.account_id=a.id
+            WHERE s.token_hash=? AND s.revoked=0 AND s.revision=a.revision AND a.gate='OPEN'""",tokenHash) { it.getString(1) }.singleOrNull()
+            ?: throw AccessDenied()
+        return account(id)
+    }
     @Synchronized override fun revoke(tokenHash: String) { execute("UPDATE app_sessions SET revoked=1 WHERE token_hash=?", tokenHash) }
+    @Synchronized override fun completeRenewal(previousHash:String,nextHash:String) = transaction {
+        val previous=authorizeRenewal(previousHash)
+        val next=authorize(nextHash)
+        val oldSid=query("SELECT sid FROM app_sessions WHERE token_hash=?",previousHash) { it.getString(1) }.single()
+        val newSid=query("SELECT sid FROM app_sessions WHERE token_hash=?",nextHash) { it.getString(1) }.single()
+        if(previousHash==nextHash || previous.id!=next.id || previous.revision!=next.revision || oldSid!=newSid) throw AccessDenied()
+        // This is rotation within the same IdP login, never a new login or recovery.
+        // Preserve durable outcomes and deduplication; do not dispatch or approve anything.
+        execute("UPDATE pending_operations SET token_hash=? WHERE token_hash=? AND account_id=? AND revision=?",
+            nextHash,previousHash,next.id,next.revision)
+        execute("UPDATE idempotency_keys SET session_hash=? WHERE session_hash=? AND account_id=?",nextHash,previousHash,next.id)
+        revoke(previousHash)
+    }
     @Synchronized fun <T> read(tokenHash: String, block: () -> T): T {
         authorize(tokenHash)
         return block()
@@ -307,6 +326,12 @@ class AccessRegistry(path: Path, private val now: () -> Instant = Instant::now) 
             execute("INSERT INTO audit VALUES(?,?,?,?,?)",UUID.randomUUID().toString(),a.id,"CONSENT_ACCEPTED",id,now().epochSecond)
             id
         }
+    }
+    @Synchronized fun serviceSummary(): Map<String,Any?> = transaction {
+        mapOf("registryAvailable" to true,"accounts" to query("SELECT COUNT(*) FROM accounts") { it.getLong(1) }.single(),
+            "walletsReady" to query("SELECT COUNT(*) FROM wallet_bindings WHERE state='READY'") { it.getLong(1) }.single(),
+            "recoveryPending" to query("SELECT COUNT(*) FROM accounts WHERE gate<>'OPEN'") { it.getLong(1) }.single(),
+            "operationsUncertain" to query("SELECT COUNT(*) FROM pending_operations WHERE state='RECONCILE_REQUIRED'") { it.getLong(1) }.single())
     }
     @Synchronized override fun close() { db.close() }
 }

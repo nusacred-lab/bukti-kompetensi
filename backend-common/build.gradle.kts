@@ -5,6 +5,7 @@ kotlin { jvmToolchain(21) }
 dependencies {
     implementation(project(":shared-contracts"))
     implementation(libs.sqlite.jdbc)
+    implementation(libs.zxing.core)
     implementation(libs.nimbus.jose)
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)

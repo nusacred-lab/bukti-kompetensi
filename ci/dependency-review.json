@@ -12729,11 +12729,11 @@
   "lockfiles": {
     "settings-gradle.lockfile": "e58bb2ed80db9f829601a658d7c33b9802eb7d2191c31e79c28e01f14c225926",
     "android-wallet/gradle.lockfile": "369e260dc3983078ed018e92fdbdb01e9a2e3559abb06a40f20a9b6d20bd0912",
-    "backend-common/gradle.lockfile": "443254375a002b155831fe0c2db8202cc0e07f1038c3fee699d2bdd47d703a1e",
-    "company-backend/gradle.lockfile": "3aa2d077ceb1f1efac86e71d49859badd21fd54f366938309c0508b690a9a3c9",
-    "custodian-backend/gradle.lockfile": "9bb56c265d876f26d28044eb0e7767bbd634b2dfb6f331e086989b2631ceb738",
-    "integration-tests/gradle.lockfile": "e871656d775171aea972cf0acf82278a8248b7a815d2082fa811a30aa7041a04",
-    "issuer-backend/gradle.lockfile": "f112dfb7e13bf0bd4f1ec882c6c149046a7ec49a9eefc6996001a79f0210d6c5",
+    "backend-common/gradle.lockfile": "8eb20d8bd31caccf5c34d2a04f68920dde2d3f4d57eb4a28d9a4ad4c4c7b297a",
+    "company-backend/gradle.lockfile": "e81150e4dfcc71af8c973b4632150db43b96411263aaa2cf6e3d36f40691ffa2",
+    "custodian-backend/gradle.lockfile": "f51e905dc2ba2a6b240d808d19ff64269281171ed81595e203cf645841718b90",
+    "integration-tests/gradle.lockfile": "4c74f64c4927d24da66ceebda45a520e4eac1703583565c33d4288f590ee735a",
+    "issuer-backend/gradle.lockfile": "5c1406c7aa3ad7612ff738836265279a23d2a96df5dc7f3fabbebe1af6ca0db7",
     "shared-contracts/gradle.lockfile": "7b631fdb8bdca1e44dce8910be685d69ddf6f05c5e4a49b605ac043053ea5695",
     "web-portals/gradle.lockfile": "ccddcc15ac58b65dbab48feac7b6b0c28d1a054a295f905007ada36232695be2"
   },
@@ -12741,5 +12741,9 @@
   "p3LockReview": {
     "date": "2026-10-22",
     "method": "Every resolved group:name:version is already in the reviewed verification-metadata ledger; no new hashes, artifact versions or repositories accepted. New local project modules add no external artifacts."
+  },
+  "p5LockReview": {
+    "reviewedAt": "2026-10-22T03:16:05.249092+00:00",
+    "reason": "Reuse the already reviewed com.google.zxing:core:3.5.4 artifact for server-generated wallet QR codes. No new artifact checksum or version. Resolve backend compile, runtime and test configurations under strict verification."
   }
 }

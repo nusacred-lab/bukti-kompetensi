@@ -5,7 +5,8 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="wallet-p2.demo.inoerawan.id" android:path="/present" />
+                <data android:scheme="https" android:host="dompet-identitas.demo.inoerawan.id" android:path="/present" />
+                <data android:scheme="https" android:host="dompet-identitas.demo.inoerawan.id" android:path="/receive" />
             </intent-filter>
         </activity>
         <activity android:name="net.openid.appauth.RedirectUriReceiverActivity" android:exported="true" tools:node="replace">
@@ -13,7 +14,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="wallet-p2.demo.inoerawan.id" android:path="/auth/android/callback" />
+                <data android:scheme="https" android:host="dompet-identitas.demo.inoerawan.id" android:path="/auth/android/callback" />
             </intent-filter>
         </activity>
     </application>

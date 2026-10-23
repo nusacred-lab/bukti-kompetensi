@@ -29,6 +29,58 @@ class OperationOutcomeTest {
         setBody("""{"previewHash":"summary","consent":true,"credentialId":"credential-one","disclosures":[]}""")
     }
 
+    @Test fun `structured protocol claims round trip through native consent and restored review`() = testApplication {
+        val now=Instant.now()
+        val registry=AccessRegistry(Files.createTempFile("p5-claim-consent-", ".sqlite")) { now }
+        register(registry,now)
+        registry.provision(hash(token)) { "wallet-one" to "key-one" }
+        val reference="openid4vp://authorize?request_uri=http%3A%2F%2Fverifier%3A7004%2Fverification-session%2Fdemo%2Frequest&client_id=redirect_uri%3Ahttp%3A%2F%2Fverifier%3A7004%2Fverification-session%2Fdemo%2Fresponse"
+        val claims=listOf(mapOf("path" to "\"candidate_id\"", "name" to "\"candidate_id\"", "value" to "synthetic-candidate",
+            "selectivelyDisclosable" to false,"required" to true,"selectable" to false))
+        var sends=0
+        val upstream=WalletClient("http://wallet:7006") { request ->
+            val response=when {
+                request.uri().path.endsWith("/preview") -> json(mapOf("valid" to true,"keyId" to "key-one","clientId" to "demo-company",
+                    "credentialOptions" to listOf(mapOf("credentialId" to "credential-one","queryId" to "competency","disclosures" to claims))))
+                request.uri().path.endsWith("/build-vp-token") -> """{"vpToken":"synthetic-vp-token"}"""
+                request.uri().path.endsWith("/send-response") -> { sends++; """{"transmission_success":true}""" }
+                else -> error("Unexpected upstream request")
+            }
+            200 to response.byteInputStream()
+        }
+        application { contractRoutes(WalletService(registry,upstream),guard()) }
+        val created=client.post("/api/v1/exchange-contexts") {
+            native();header("Content-Type","application/json")
+            setBody(json(mapOf("reference" to reference,"credentialId" to null)))
+        }
+        assertEquals(201,created.status.value)
+        val preview=JSONObjectUtils.parse(created.bodyAsText())
+        val id=preview["id"] as String
+        val restored=client.get("/api/v1/exchange-contexts/$id") { native() }
+        assertEquals(200,restored.status.value)
+        val details=JSONObjectUtils.parse(restored.bodyAsText())["details"] as Map<*,*>
+        assertEquals(listOf("\"candidate_id\""),details["disclosures"])
+        assertFalse(details.containsKey("claims"),"Protocol claim objects must not leak into the native string-list contract")
+        assertEquals(0,sends,"Restoring review must not dispatch")
+        val body=mapOf("previewHash" to preview["previewHash"],"consent" to true,"credentialId" to "credential-one","disclosures" to details["disclosures"])
+        val consentKey=java.util.UUID.randomUUID().toString()
+        val tampered=client.post("/api/v1/exchange-contexts/$id/present") {
+            native();header("Content-Type","application/json");header("Idempotency-Key",consentKey)
+            setBody(json(body+mapOf("disclosures" to emptyList<String>())))
+        }
+        assertEquals(404,tampered.status.value)
+        repeat(2) {
+            val accepted=client.post("/api/v1/exchange-contexts/$id/present") {
+                native();header("Content-Type","application/json");header("Idempotency-Key",consentKey)
+                setBody(json(body))
+            }
+            assertEquals(202,accepted.status.value)
+            assertEquals("COMPLETED",JSONObjectUtils.parse(accepted.bodyAsText())["state"])
+        }
+        assertEquals(1,sends)
+        registry.close()
+    }
+
     @Test fun `tampered consent selection and client supplied protocol context never dispatch`() = testApplication {
         val now=Instant.now()
         val registry=AccessRegistry(Files.createTempFile("p4-consent-tamper-", ".sqlite")) { now }

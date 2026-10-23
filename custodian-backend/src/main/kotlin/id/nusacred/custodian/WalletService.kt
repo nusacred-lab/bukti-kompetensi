@@ -123,17 +123,26 @@ class WalletService(private val registry: AccessRegistry, private val upstream: 
             else candidates.singleOrNull { it["credentialId"] == selected } ?: throw AccessDenied()
         val query = chosen["queryId"] as? String ?: throw AccessDenied()
         val credential = chosen["credentialId"] as? String ?: throw AccessDenied()
-        val disclosures = chosen["disclosures"] as? List<*> ?: throw AccessDenied()
+        val disclosureDetails = chosen["disclosures"] as? List<*> ?: throw AccessDenied()
+        // The protocol preview describes mandatory claims as objects. The native
+        // consent contract binds their exact paths, rather than those objects.
+        val disclosures = disclosureDetails.map {
+            val claim = it as? Map<*,*> ?: throw AccessDenied()
+            if(claim["selectivelyDisclosable"] != false || claim["required"] != true || claim["selectable"] != false) throw AccessDenied()
+            (claim["path"] as? String)?.takeIf { path -> path.isNotBlank() && path.length <= 4096 && path.none(Char::isISOControl) }
+                ?: throw AccessDenied()
+        }
+        if(disclosures.size > 100 || disclosures.distinct().size != disclosures.size) throw AccessDenied()
         val recipient = p["clientId"] as? String ?: throw AccessDenied()
         val details = mapOf("recipient" to recipient, "credential_label" to (chosen["label"] ?: "Competency Proof"),
             "issuer" to chosen["issuer"], "disclosures" to disclosures)
         val id = randomToken()
         val summary = hash(json(mapOf("url" to url, "wallet" to b.walletId, "key" to b.keyId,
-            "query" to query, "credential" to credential, "details" to details)))
+            "query" to query, "credential" to credential, "details" to details, "claims" to disclosureDetails)))
         val expires = Instant.now().plusSeconds(240)
         registry.savePreview(hash(opaque), id, summary, expires.epochSecond, json(mapOf(
             "url" to url, "wallet" to b.walletId, "key" to b.keyId, "query" to query,
-            "credential" to credential, "summary" to summary, "disclosures" to disclosures, "expires" to expires.epochSecond)))
+            "credential" to credential, "summary" to summary, "disclosures" to disclosures, "details" to details, "choices" to candidates.map { mapOf("credentialId" to it["credentialId"],"label" to it["label"]) }, "expires" to expires.epochSecond)))
         mapOf("context_id" to id, "credential_id" to credential, "summary_hash" to summary,
             "expires_at" to expires.epochSecond, "consent_required" to true, "details" to details,
             "choices" to candidates.map { mapOf("credentialId" to it["credentialId"],"label" to it["label"],"issuer" to it["issuer"]) })
@@ -146,10 +155,21 @@ class WalletService(private val registry: AccessRegistry, private val upstream: 
         val id=randomToken()
         val expires=minOf((payload["expires"] as Number).toLong(),Instant.now().epochSecond+240)
         val summary=hash(json(mapOf("reference" to reference,"wallet" to binding.walletId,"key" to binding.keyId,"resolved" to resolved)))
-        val preview=json(mapOf("kind" to "receive","wallet" to binding.walletId,"key" to binding.keyId,"resolved" to resolved,"summary" to summary))
+        val issuerName=(((resolved["issuer"] as? Map<*,*>)?.get("display") as? Map<*,*>)?.get("name") as? String)
+            ?.take(160)?.filterNot(Char::isISOControl) ?: "Credential issuer"
+        val details=mapOf("candidateId" to payload["candidate"],"credentialLabel" to "Competency Proof",
+            "issuer" to resolved["credentialIssuer"],"issuerName" to issuerName)
+        val preview=json(mapOf("kind" to "receive","wallet" to binding.walletId,"key" to binding.keyId,"resolved" to resolved,"summary" to summary,"expires" to expires,
+            "details" to details))
         registry.saveReceivingPreview(hash(opaque),payload["id"] as String,id,summary,expires,preview)
         mapOf("id" to id,"credentialId" to null,"previewHash" to summary,"expiresAt" to expires,"consentRequired" to true,
-            "details" to mapOf("candidateId" to payload["candidate"],"credentialLabel" to "Competency Proof","issuer" to resolved["credentialIssuer"]))
+            "details" to details)
+    }
+    fun context(opaque: String,id: String): Map<String,Any?> = registry.read(hash(opaque)) {
+        val p=JSONObjectUtils.parse(registry.preview(hash(opaque),id))
+        val details=p["details"] as? Map<*,*> ?: throw AccessDenied()
+        mapOf("id" to id,"credentialId" to p["credential"],"previewHash" to p["summary"],"expiresAt" to p["expires"],
+            "consentRequired" to true,"details" to details,"choices" to p["choices"])
     }
     fun receiveConsented(opaque: String, id: String, summary: String, key: String): Map<String,Any?> = synchronized(registry) {
         val state=registry.operation(hash(opaque),id)["state"]
