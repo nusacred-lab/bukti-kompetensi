@@ -29,3 +29,9 @@ reviewed policy upgrades vulnerable Netty 4.1 requests to 4.1.138.Final and Boun
 Castle requests below 1.86 to 1.86, without lowering newer versions. New hashes
 must match the review ledger; metadata discovery is never accepted automatically.
 Runtime graphs are scanned separately.
+
+Application images use the shared patched JVM runtime pinned in their Containerfiles.
+Its build/scan/sign evidence is infrastructure run 39895357121, with Temurin
+21.0.13+9 and Ubuntu CA package 20260816ubuntu0.24.04.1. The pinned runtime
+addresses the October Java and CA advisories; a clean source scan alone does not
+replace final image scanning and trust-store validation.

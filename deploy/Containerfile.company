@@ -1,5 +1,6 @@
-# Same reviewed Linux amd64 JRE base used by the accepted walt.id fork baseline.
-FROM docker.io/library/eclipse-temurin@sha256:da0f0d242bec39e3fe5c1ac4c415840f03be9cef848c243d723166708e02148c
+# Shared P6 JVM runtime: patched Temurin and OS CA trust, built/scanned/signed in infrastructure CI.
+FROM ghcr.io/nusacred-lab/competency-proof-jvm-runtime@sha256:ecbcd98b260eac22078f57b46422999409094325a44d5f12e2f0b8ac6de90a89
+USER 0:0
 ARG SOURCE_REVISION
 LABEL org.opencontainers.image.source="https://github.com/nusacred-lab/competency-proof"
 LABEL org.opencontainers.image.revision="${SOURCE_REVISION}"
