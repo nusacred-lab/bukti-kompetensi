@@ -14,7 +14,7 @@
   "x-runtime-limits": {
     "contextTtlSeconds": 300,
     "presentationPreviewTtlSeconds": 240,
-    "appSessionTtlSeconds": 1800,
+    "appSessionTtlSeconds": 3600,
     "idpResetTtlSeconds": 600,
     "bodyBytes": 32768,
     "authenticatedRequestsPerMinute": 60,
