@@ -76,6 +76,12 @@ data class OidcConfig(
     }
 }
 
+internal const val BROWSER_SESSION_SECONDS = 3600L
+internal fun appSessionExpiry(accessExpiry: Instant, idExpiry: Instant, channel: String, now: Instant = Instant.now()): Instant {
+    require(channel in setOf("browser", "native"))
+    return minOf(accessExpiry, idExpiry, now.plusSeconds(if(channel == "browser") BROWSER_SESSION_SECONDS else 1800L))
+}
+
 data class LoginFlow(val nonce: String, val verifier: String, val binding: String, val expires: Instant)
 data class AppSession(val subject: String, val sid: String, val email: String, val accessToken: String,
                       val expires: Instant, val channel: String, val csrf: String,
@@ -233,7 +239,7 @@ class OidcService(val config: OidcConfig, private val registry: OidcRegistry? = 
         if (atHash != null && atHash != expectedHash) throw AuthRejected()
         active(access, token.subject, sid)
         val session = AppSession(token.subject, sid, id.getStringClaim("email") ?: "", access,
-            minOf(token.expirationTime.toInstant(), id.expirationTime.toInstant(), Instant.now().plusSeconds(1800)),
+            appSessionExpiry(token.expirationTime.toInstant(), id.expirationTime.toInstant(), channel),
             channel, randomToken(), roles.filterIsInstance<String>().toSet(), config.organizationAssignments[token.subject])
         val opaque = randomToken()
         if (sessions.size >= 512) throw AuthRejected()

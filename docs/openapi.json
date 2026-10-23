@@ -23,7 +23,9 @@
     "viewerRequestsPerMinute": 30,
     "maxViewerSessions": 512,
     "polling": "Start at 2 seconds, exponential backoff capped at 15 seconds; never blindly retry sign/send.",
-    "issuerReviewTtlSeconds": 900
+    "issuerReviewTtlSeconds": 900,
+    "browserAppSessionTtlSeconds": 3600,
+    "nativeAppSessionMaxSeconds": 1800
   },
   "paths": {
     "/api/v1/sessions": {

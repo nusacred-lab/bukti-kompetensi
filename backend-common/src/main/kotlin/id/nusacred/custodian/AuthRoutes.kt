@@ -117,7 +117,7 @@ fun Application.authRoutes(auth: OidcService) {
                 }
                 call.cookie(FLOW_COOKIE, "", 0)
                 val lifetime=withContext(Dispatchers.IO) {
-                    (auth.session(opaque,"browser").expires.epochSecond-java.time.Instant.now().epochSecond).coerceIn(1,1800).toInt()
+                    (auth.session(opaque,"browser").expires.epochSecond-java.time.Instant.now().epochSecond).coerceIn(1,BROWSER_SESSION_SECONDS).toInt()
                 }
                 call.cookie(SESSION_COOKIE, opaque, lifetime)
                 call.respondRedirect("/")

@@ -180,3 +180,17 @@ approval reference on trust entries. Back up issuer/company stores consistently
 before activation. Old binaries reject the newer schema; rollback requires their
 matching pre-migration snapshots, not merely old container images. No Android,
 Keycloak session policy, issuer signing key or holder key changes are required.
+
+
+## Approved one-hour web sessions
+
+All three administrative browser portals have a one-hour absolute sign-in limit.
+Their own confidential BFF clients override access token lifespan, client idle and
+client maximum to 3,600 seconds; backend authorization and the Secure/HttpOnly
+cookie use the same upper bound and never outlive access or ID tokens. IdP tokens
+remain server-memory-only, and every authenticated request still introspects the
+token. Logout, revocation, recovery and backend restart can end access earlier.
+Existing short sessions are not extended retroactively; sign in again once after
+activation. The mobile client keeps five-minute access and its existing rotating
+seven-day-max, 24-hour-idle refresh policy. Public verification requests and issuer
+reviews keep their existing short validity periods.
