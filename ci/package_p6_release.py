@@ -33,10 +33,25 @@ def main():
     p.add_argument('--signing-directory', type=Path, required=True)
     p.add_argument('--assetlinks', type=Path, required=True)
     p.add_argument('--output', type=Path, required=True)
+    p.add_argument('--release-manifest', type=Path, required=True)
+    p.add_argument('--trusted-workflow-commit', required=True)
+    p.add_argument('--trusted-ref', choices=['refs/heads/main', 'refs/heads/codex/p6-release'], default='refs/heads/main')
     a = p.parse_args()
     if not re.fullmatch('[a-f0-9]{40}', a.source_commit) or not re.fullmatch('[a-f0-9]{64}', a.unsigned_sha256):
         p.error('Require full source commit and CI unsigned APK checksum')
+    if not re.fullmatch('[a-f0-9]{40}', a.trusted_workflow_commit):
+        p.error('Require an independently reviewed full infrastructure workflow commit')
+    for artifact in [a.release_manifest, a.unsigned]:
+        subprocess.run(['gh', 'attestation', 'verify', str(artifact.resolve()), '--repo', 'nusacred-lab/platform-infra',
+            '--signer-workflow', 'nusacred-lab/platform-infra/.github/workflows/release.yml',
+            '--source-digest', a.trusted_workflow_commit, '--signer-digest', a.trusted_workflow_commit,
+            '--source-ref', a.trusted_ref, '--deny-self-hosted-runners'], check=True)
+    release = json.loads(a.release_manifest.read_text())
+    if (release['infrastructureRevision'] != a.trusted_workflow_commit or release['workflow']['ref'] != a.trusted_ref or
+            release['apk']['unsignedSha256'] != a.unsigned_sha256 or release['apk']['sourceRevision'] != a.source_commit):
+        p.error('APK inputs do not match the attested release manifest')
     if digest(a.unsigned) != a.unsigned_sha256:
+
         p.error('Unsigned APK differs from the attested CI candidate')
     if 'runtime' not in a.output.resolve().parts:
         p.error('Keep release signing work in private runtime')
