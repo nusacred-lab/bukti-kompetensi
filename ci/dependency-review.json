@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-10-21T12:28:51.868603+00:00",
-  "metadataSha256": "04e9e037354432dcc8be25faddad9e4195b7658636917ec52390d72e818dbbba",
+  "reviewedAt": "2026-10-23T03:14:59.568940+00:00",
+  "metadataSha256": "aecedc7c77de7a26bd5c80851c7dd4bfddca9363cbaf4cf9fbce3b25b92c3d97",
   "artifacts": [
     {
       "group": "androidx.activity",
@@ -12724,11 +12724,301 @@
       "sha256": "34b623af9c25ca7f2e52406f10495c46e6f410835d7a058c60ba36923d689635",
       "method": "download-sha256",
       "source": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlinx/atomicfu-jvm/0.28.0/atomicfu-jvm-0.28.0.module"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-buffer",
+      "version": "4.1.138.Final",
+      "artifact": "netty-buffer-4.1.138.Final.jar",
+      "sha256": "5bef3ea2b9e80c5e8d03151ca1609bd75fd1e264863bf3e2f8d538392c0f2c38",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-buffer",
+      "version": "4.1.138.Final",
+      "artifact": "netty-buffer-4.1.138.Final.pom",
+      "sha256": "3d9c064e5f9c1038269344751a0902221d104bfd80e07701b3e20634c9cab18d",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-codec",
+      "version": "4.1.138.Final",
+      "artifact": "netty-codec-4.1.138.Final.jar",
+      "sha256": "21b9b7717da9ed7034c7a9ef4fcea4a08825e8f52d775da4d898364edf99327f",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-codec",
+      "version": "4.1.138.Final",
+      "artifact": "netty-codec-4.1.138.Final.pom",
+      "sha256": "b60e503237740ea2965453471af832b553cd9ede8cf6e128e1b4ae67c88e1dfc",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-codec-http",
+      "version": "4.1.138.Final",
+      "artifact": "netty-codec-http-4.1.138.Final.jar",
+      "sha256": "7d9000e53c8e37504be42b8dd7b646a7d1c73ad2cf801527fe3c6301880fe06f",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-codec-http",
+      "version": "4.1.138.Final",
+      "artifact": "netty-codec-http-4.1.138.Final.pom",
+      "sha256": "d54f278f907cb795db4e0bb29ee1cfb444299f447a1b0a388a7c7ccfde012182",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-codec-http2",
+      "version": "4.1.138.Final",
+      "artifact": "netty-codec-http2-4.1.138.Final.jar",
+      "sha256": "c7521231535c252903d9e424e162f789b5b55b0b0799628ea466a9b3daf49dae",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-codec-http2",
+      "version": "4.1.138.Final",
+      "artifact": "netty-codec-http2-4.1.138.Final.pom",
+      "sha256": "2ddd376fc8af75f0971fe80f44cb77e8a37cdc7662f8d17333d2bbbd85c0a45a",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-codec-socks",
+      "version": "4.1.138.Final",
+      "artifact": "netty-codec-socks-4.1.138.Final.jar",
+      "sha256": "bc15ad96188a6eee2d0c5f7f8e443fa916fa30e74a65e220b1ac0a04574dda87",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-codec-socks",
+      "version": "4.1.138.Final",
+      "artifact": "netty-codec-socks-4.1.138.Final.pom",
+      "sha256": "70e8ac72d62ca65ff0c2ca5bd9ad79b9bdf277462203464458912d2f48e97ee7",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-common",
+      "version": "4.1.138.Final",
+      "artifact": "netty-common-4.1.138.Final.jar",
+      "sha256": "b4ebb8fa44cd5790731928a83fd0f25a530e41c407c093bef4a0196db30b693f",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-common",
+      "version": "4.1.138.Final",
+      "artifact": "netty-common-4.1.138.Final.pom",
+      "sha256": "9b4ac43369a6ed87b0ca243e3032c25ef55278304cc113aa8389048d3840d24e",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-handler",
+      "version": "4.1.138.Final",
+      "artifact": "netty-handler-4.1.138.Final.jar",
+      "sha256": "a79fb814e029db17da82baea25a0340172af2c59f107fd20b394c1fa28680f21",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-handler",
+      "version": "4.1.138.Final",
+      "artifact": "netty-handler-4.1.138.Final.pom",
+      "sha256": "ce6874b25ea1c0e779a6292c797cd631c3038b84f09aee795f0621c080c584fa",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-handler-proxy",
+      "version": "4.1.138.Final",
+      "artifact": "netty-handler-proxy-4.1.138.Final.jar",
+      "sha256": "fd26635e06af15b2dd3f7502a195dc19fcd451264948a8707fb26f60e4d510b9",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-handler-proxy",
+      "version": "4.1.138.Final",
+      "artifact": "netty-handler-proxy-4.1.138.Final.pom",
+      "sha256": "ef966a3117ba4cb64e8b9a365330b76e56444f2994dedc413ca839360c01df18",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-parent",
+      "version": "4.1.138.Final",
+      "artifact": "netty-parent-4.1.138.Final.pom",
+      "sha256": "74ee1ff52e50c3fd25a9b6aad2f132c8f3fce4e9fad6b15044905d911a44d553",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-resolver",
+      "version": "4.1.138.Final",
+      "artifact": "netty-resolver-4.1.138.Final.jar",
+      "sha256": "50c338a0e5c9997513e738f0fcb47d579a9e8852d317ba367f5d141e210187c0",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-resolver",
+      "version": "4.1.138.Final",
+      "artifact": "netty-resolver-4.1.138.Final.pom",
+      "sha256": "6ec7f42d6f73e7a0fe28686a28bfadb8e2aa5d729ed0593fe7902e74fd230ca6",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-transport",
+      "version": "4.1.138.Final",
+      "artifact": "netty-transport-4.1.138.Final.jar",
+      "sha256": "6c064c1cae4d410b920abfc07959a49db1b4778a9547614373e97d31cab0cad6",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-transport",
+      "version": "4.1.138.Final",
+      "artifact": "netty-transport-4.1.138.Final.pom",
+      "sha256": "39be347c16d858d2a87505a4a7b51d4c34fe7909e9f87a4a8f10c88e6640a1e3",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-transport-native-unix-common",
+      "version": "4.1.138.Final",
+      "artifact": "netty-transport-native-unix-common-4.1.138.Final.jar",
+      "sha256": "8d1ada8f185d6f6da4cd79f9daeef39f1db49908cfec8bc2a1fb602458aa2341",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "io.netty",
+      "name": "netty-transport-native-unix-common",
+      "version": "4.1.138.Final",
+      "artifact": "netty-transport-native-unix-common-4.1.138.Final.pom",
+      "sha256": "4fea21319fcf2cbb81e36e3e66b977181191e89ca0930538d0fdce90d216438d",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "org.bouncycastle",
+      "name": "bcpkix-jdk18on",
+      "version": "1.86",
+      "artifact": "bcpkix-jdk18on-1.86.jar",
+      "sha256": "8d8b41a4b149bdae8d331f059a578870954d1e3ff29f8269a9eb3ee19a7e4ef7",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "org.bouncycastle",
+      "name": "bcpkix-jdk18on",
+      "version": "1.86",
+      "artifact": "bcpkix-jdk18on-1.86.pom",
+      "sha256": "44989844fb17b39eb08eabeaf81e1fd16ac50c994d5c02119f891220c3ac5878",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "org.bouncycastle",
+      "name": "bcprov-jdk18on",
+      "version": "1.86",
+      "artifact": "bcprov-jdk18on-1.86.jar",
+      "sha256": "2af190b300cbb0b35e248ccf5f4a06b6072030aeb3da7a98ec73abe5b4cb371f",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "org.bouncycastle",
+      "name": "bcprov-jdk18on",
+      "version": "1.86",
+      "artifact": "bcprov-jdk18on-1.86.pom",
+      "sha256": "970b70cb75a184639b6fb9ba3c465aca6a4e1a5f3fff4d65ce8574b2fd79ef38",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "org.bouncycastle",
+      "name": "bcutil-jdk18on",
+      "version": "1.86",
+      "artifact": "bcutil-jdk18on-1.86.jar",
+      "sha256": "1c268e15f785aafb1e4670d8d6e5f856f69475e96c162dadcd1ff9b350e9139f",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
+    },
+    {
+      "group": "org.bouncycastle",
+      "name": "bcutil-jdk18on",
+      "version": "1.86",
+      "artifact": "bcutil-jdk18on-1.86.pom",
+      "sha256": "2209b3e5d1eb2bb3c593b824c1b8f142b05dea8e9df7400b0f33f2b91a0741fa",
+      "method": "inherited-reviewed-fork",
+      "source": "https://github.com/nusacred-lab/waltid-identity/blob/10068c7f5f1f94ffeb4e5198a24d6de1eb458bda/gradle/verification-metadata.xml",
+      "baselineCommit": "10068c7f5f1f94ffeb4e5198a24d6de1eb458bda"
     }
   ],
   "lockfiles": {
     "settings-gradle.lockfile": "e58bb2ed80db9f829601a658d7c33b9802eb7d2191c31e79c28e01f14c225926",
-    "android-wallet/gradle.lockfile": "369e260dc3983078ed018e92fdbdb01e9a2e3559abb06a40f20a9b6d20bd0912",
+    "android-wallet/gradle.lockfile": "d7791039bf7a3e82a21916f4800666cba77a010c966575183106133e83d1d0a5",
     "backend-common/gradle.lockfile": "8eb20d8bd31caccf5c34d2a04f68920dde2d3f4d57eb4a28d9a4ad4c4c7b297a",
     "company-backend/gradle.lockfile": "e81150e4dfcc71af8c973b4632150db43b96411263aaa2cf6e3d36f40691ffa2",
     "custodian-backend/gradle.lockfile": "f51e905dc2ba2a6b240d808d19ff64269281171ed81595e203cf645841718b90",
