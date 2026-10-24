@@ -31,7 +31,8 @@ fun main() {
     } ?: 18080
     val portalRoot = System.getenv("PORTAL_ROOT")?.let(::File)
     val registry = System.getenv("ACCESS_REGISTRY_PATH")?.let { AccessRegistry(java.nio.file.Path.of(it)) }
-    val auth = OidcConfig.fromEnvironment()?.let { config ->
+    val oidcConfig = OidcConfig.fromEnvironment()
+    val auth = oidcConfig?.let { config ->
         // Discovery remains strict. Startup may wait for the identity container to become ready.
         val deadline = System.nanoTime() + java.time.Duration.ofSeconds(90).toNanos()
         var service: OidcService? = null
@@ -50,6 +51,9 @@ fun main() {
     val recoverySecret = System.getenv("RECOVERY_SECRET_FILE")?.let {
         java.nio.file.Files.readString(java.nio.file.Path.of(it)).trim().toByteArray(Charsets.US_ASCII)
     }
+    val invitations = System.getenv("WALLET_INVITATION_DB_PATH")?.let {
+        ParticipantInvitations(java.nio.file.Path.of(it), oidcConfig?.let(KeycloakParticipantDirectory::fromEnvironment))
+    }
     embeddedServer(Netty, host = host, port = port) {
         if (registry != null && recoverySecret != null) recoveryRoutes(registry,
             RecoveryAuthenticator(requireNotNull(System.getenv("OIDC_ISSUER")), recoverySecret))
@@ -57,6 +61,7 @@ fun main() {
         if (auth != null && wallet != null) { walletRoutes(auth, wallet); contractRoutes(auth,wallet) }
         portalRoutes("custodian")
         if(auth != null && registry != null) custodianStatusRoutes(registry,id.nusacred.common.RequestGuard.oidc(auth))
+        if(auth != null && invitations != null) participantInvitationRoutes(invitations,id.nusacred.common.RequestGuard.oidc(auth))
         stackProbe(portalRoot)
     }.start(wait = true)
 }
