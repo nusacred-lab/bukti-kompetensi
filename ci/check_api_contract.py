@@ -11,7 +11,7 @@ for path, methods in spec["paths"].items():
         assert op["operationId"] not in ids
         ids.add(op["operationId"])
         assert "security" in op and "x-ownership" in op
-        assert op["x-implementation-phase"] in {"P2", "P3", "P4", "P5"}
+        assert op["x-implementation-phase"] in {"P2", "P3", "P4", "P5", "P7"}
         if path.startswith("/internal/"):
             assert op["security"] == [{"recoveryHmac": []}]
             assert "503" in op["responses"]

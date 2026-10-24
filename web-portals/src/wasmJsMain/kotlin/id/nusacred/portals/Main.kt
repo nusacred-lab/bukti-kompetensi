@@ -41,6 +41,9 @@ private class PortalState {
     var trust by mutableStateOf<List<Data>>(emptyList())
     var trustRevision by mutableStateOf(0)
     var status by mutableStateOf<Data?>(null)
+    var invitations by mutableStateOf<Data?>(null)
+    var invitationEmail by mutableStateOf("")
+    var invitationConfirmed by mutableStateOf(false)
     var verification by mutableStateOf<Data?>(null)
     var qr by mutableStateOf<Data?>(null)
     var dialog by mutableStateOf("")
@@ -79,7 +82,10 @@ private class PortalState {
                     catch(_:Exception) { issuerCandidates=emptyList();candidateProblem="The issuer's published profile is temporarily unavailable. Refresh to try again. Existing trust is unchanged." }
                 }
             }
-            else -> if(session!=null) status=api("/api/v1/service-status")
+            else -> if(session!=null) {
+                status=api("/api/v1/service-status")
+                invitations=try { api("/api/v1/participant-invitations") } catch(e:PortalFailure) { if(e.status in listOf(404,503)) null else throw e }
+            }
         }
     }
 }
@@ -91,6 +97,9 @@ private class PortalState {
             else state.problem=when {
                 e is PortalFailure && e.code=="ISSUER_PROFILE_CHANGED" -> "The issuer publication changed. Cancel this review and review the current profile before approving."
                 e is PortalFailure && e.code=="REVIEW_EXPIRED" -> "This issuer review expired. Cancel it and open a fresh review."
+                e is PortalFailure && e.code=="INVITATION_EXISTS" -> "An invitation record already exists for this email. Refresh and check its status before taking any further action."
+                e is PortalFailure && e.status==429 -> "Wait one minute before sending another invitation."
+                e is PortalFailure && e.code=="INVITATIONS_UNAVAILABLE" -> "Invitation delivery is not configured. Contact the operator."
                 e is PortalFailure && e.status==400 -> "Check the form fields before trying again. No new record was saved."
                 e is PortalFailure && e.status==403 -> "Your account does not have access to this workspace."
                 e is PortalFailure && e.status==410 -> "This request has expired. Create a fresh request to continue."
@@ -115,7 +124,7 @@ private class PortalState {
     LaunchedEffect(state.session?.n("expiresAt")) {
         val expires=state.session?.n("expiresAt") ?: return@LaunchedEffect
         delay(((expires-now()).coerceAtLeast(0.0)*1000).toLong())
-        state.session=null;state.trust=emptyList();state.issuerReview=null;state.verificationNote="";state.assessments=emptyList();state.results=emptyList();state.status=null
+        state.session=null;state.trust=emptyList();state.issuerReview=null;state.verificationNote="";state.assessments=emptyList();state.results=emptyList();state.status=null;state.invitations=null;state.invitationEmail="";state.invitationConfirmed=false
         state.dialog="";state.qr=null;state.offer=null;state.keys.clear();state.verification=null;saveId("")
         state.problem="Your session has ended. Sign in again to continue."
     }
@@ -153,7 +162,7 @@ private class PortalState {
                             if(wide) Label(state.session!!.s("email"),12,Palette.Muted)
                             Action("Sign out",primary=false,enabled=!state.busy,icon="logout") { act {
                                 api("/auth/logout","POST","{}",state.csrf);state.session=null;state.trust=emptyList();state.issuerReview=null;state.verificationNote="";state.dialog="";state.qr=null;state.offer=null
-                                state.verification=null;saveId("");state.results=emptyList();state.assessments=emptyList();state.status=null;state.success="You are signed out."
+                                state.verification=null;saveId("");state.results=emptyList();state.assessments=emptyList();state.status=null;state.invitations=null;state.invitationEmail="";state.invitationConfirmed=false;state.success="You are signed out."
                             } }
                         } else Action(if(state.isPublic) "Company sign in" else "Sign in",icon="arrow") { navigate("/auth/start") }
                     }
@@ -213,7 +222,7 @@ private fun workspace(service:String)=when(service) { "issuer" -> "Certification
 private fun tabs(service:String)=when(service) {
     "issuer" -> listOf(Triple("overview","Assessments","document"),Triple("account","Workspace","shield"))
     "company" -> listOf(Triple("overview","Overview","home"),Triple("jobs","Job opening","briefcase"),Triple("results","Verifications","document"),Triple("trust","Trusted issuers","shield"))
-    else -> listOf(Triple("overview","Service overview","home"),Triple("recovery","Recovery & access","shield"))
+    else -> listOf(Triple("overview","Service overview","home"),Triple("recovery","Recovery & access","shield"),Triple("invitations","Participant invitations","document"))
 }
 @Composable private fun Sidebar(s:PortalState) {
     val entity=Entities.forService(s.service)
@@ -507,27 +516,70 @@ private fun tabs(service:String)=when(service) {
 }
 @Composable private fun CustodianWorkspace(s:PortalState,wide:Boolean,act:(suspend ()->Unit)->Unit) {
     val data=s.status
-    PageHeading("CUSTODIAN WORKSPACE",if(s.page=="recovery") "Restore access. Preserve the proof." else "Keep every wallet in good hands.",
-        "A limited operational view of registry readiness, recovery gates and work that needs confirmation.") {
+    val recovery=s.page=="recovery"
+    val inviting=s.page=="invitations"
+    PageHeading("CUSTODIAN WORKSPACE",when { inviting -> "Invite a wallet participant.";recovery -> "Restore access. Preserve the proof.";else -> "Keep every wallet in good hands." },
+        when { inviting -> "Approve a participant's email before sending a single-use registration link.";recovery -> "Monitor recovery gates and operations that need confirmation.";else -> "Check account registry access and persistent wallet readiness." }) {
         Action("Refresh status",primary=false,enabled=!s.busy,icon="refresh") { act { s.refresh() } }
     }
-    if(wide) Row(horizontalArrangement=Arrangement.spacedBy(16.dp)) {
-        Stat("Wallets ready",(data?.n("walletsReady")?.toInt() ?: 0).toString(),"Persistent server wallets","wallet",Modifier.weight(1f))
-        Stat("Recovery gates",(data?.n("recoveryPending")?.toInt() ?: 0).toString(),"Awaiting safe account access","shield",Modifier.weight(1f))
-        Stat("Needs confirmation",(data?.n("operationsUncertain")?.toInt() ?: 0).toString(),"No automatic redispatch","clock",Modifier.weight(1f))
-    }
-    Card(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
-            Heading("Registry status",20);Pill(if(data?.b("registryAvailable")==true) "Available" else "Not checked",if(data?.b("registryAvailable")==true) "success" else "warning")
+    if(inviting) {
+        ParticipantInvitationWorkspace(s,act)
+    } else if(recovery) {
+        Stat("Recovery gates",(data?.n("recoveryPending")?.toInt() ?: 0).toString(),"Awaiting safe account access","shield")
+        Stat("Needs confirmation",(data?.n("operationsUncertain")?.toInt() ?: 0).toString(),"Review before any replacement action","clock")
+        Card(Modifier.fillMaxWidth()) {
+            Icon("shield",Palette.Teal);Heading("Recovery without starting over",22)
+            Label("Password recovery preserves the wallet and its existing credentials. Old sessions are revoked and pending approvals cannot be reused.",14,Palette.Muted)
+            Label("Participants use the recovery link on secure sign-in. Administrators monitor aggregate status here. This page does not reset passwords or expose signing keys or credentials.",14,Palette.Muted)
+            if((data?.n("operationsUncertain") ?: 0.0)>0) Notice("Some operation outcomes need confirmation. Follow the reconciliation runbook before taking any replacement action.",true)
         }
-        Label("${data?.n("accounts")?.toInt() ?: 0} account records · ${data?.n("walletsReady")?.toInt() ?: 0} wallets ready",14,Palette.Muted)
-        Label("This view confirms registry access. It does not infer that every external service is healthy.",12,Palette.Muted)
+    } else {
+        Stat("Wallets ready",(data?.n("walletsReady")?.toInt() ?: 0).toString(),"Persistent server wallets","wallet")
+        Card(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+                Heading("Registry status",20);Pill(if(data?.b("registryAvailable")==true) "Available" else "Not checked",if(data?.b("registryAvailable")==true) "success" else "warning")
+            }
+            Label("${data?.n("accounts")?.toInt() ?: 0} account records · ${data?.n("walletsReady")?.toInt() ?: 0} wallets ready",14,Palette.Muted)
+            Label("Registry readiness does not confirm the health of every external service.",12,Palette.Muted)
+        }
+        Card(Modifier.fillMaxWidth()) {
+            Heading("Participant registration",22)
+            Label("Registration is by invitation. Approve an email in Participant invitations; the participant verifies their email, chooses a password and signs in through NusaCred Wallet on Android.",14,Palette.Muted)
+            Action("Open participant invitations",primary=false,enabled=!s.busy) { s.page="invitations" }
+        }
+    }
+}
+@Composable private fun ParticipantInvitationWorkspace(s:PortalState,act:(suspend ()->Unit)->Unit) {
+    val enabled=s.invitations?.b("enabled")==true
+    Card(Modifier.fillMaxWidth()) {
+        Heading("New participant",22)
+        Label("The link expires after 15 minutes. The participant chooses their own password; administrators cannot see it.",14,Palette.Muted)
+        if(!enabled) Notice("Invitation delivery is not configured for this deployment. Ask the operator to enable it.",true)
+        Field("Participant email",s.invitationEmail,{ s.invitationEmail=it;s.invitationConfirmed=false },hint="Enter the approved participant's email address")
+        Action(if(s.invitationConfirmed) "Confirmed: recipient approved" else "Confirm this recipient is approved",primary=s.invitationConfirmed,enabled=!s.busy && enabled) { s.invitationConfirmed=!s.invitationConfirmed }
+        Action("Send invitation",enabled=!s.busy && enabled && s.invitationConfirmed && s.invitationEmail.trim().contains("@"),icon="arrow") { act {
+            val email=s.invitationEmail.trim().lowercase()
+            val result=api("/api/v1/participant-invitations","POST",body("email" to email,"confirmed" to "true"),s.csrf,s.key("invite:"+email))
+            s.invitationConfirmed=false
+            s.success=when(result.s("state")) {
+                "SENT" -> "Invitation sent. Ask the participant to check their inbox and spam folder."
+                "ACCOUNT_EXISTS" -> "This email already has an account. No invitation was sent."
+                else -> "Delivery needs confirmation. Contact the operator before any further action."
+            }
+            s.refresh()
+        } }
     }
     Card(Modifier.fillMaxWidth()) {
-        Icon("shield",Palette.Teal);Heading("Recovery without starting over",22)
-        Label("Password recovery preserves the wallet and its existing credentials. Old sessions are revoked and pending approvals cannot be reused.",14,Palette.Muted)
-        Label("Candidates use the recovery link on secure sign-in. Administrators monitor status here; signing keys and credential exports are not available in this workspace.",14,Palette.Muted)
-        if((data?.n("operationsUncertain") ?: 0.0)>0) Notice("Some operation outcomes need confirmation. Follow the reconciliation runbook before taking any replacement action.",true)
+        Heading("Recent invitation requests",22)
+        Label("This list records delivery requests. It does not confirm inbox receipt or completed registration. Requests are never resent automatically.",12,Palette.Muted)
+        val items=s.invitations?.list("items") ?: emptyList()
+        if(items.isEmpty()) Label("No invitation requests recorded here yet. Invitations previously sent by the operator script are not listed.",14,Palette.Muted)
+        items.forEach { item ->
+            KeyValue("Participant",item.s("email"))
+            val state=item.s("state")
+            Pill(when(state) { "SENT" -> "Email sent";"ACCOUNT_EXISTS" -> "Account already exists";else -> "Operator review required" },if(state=="SENT") "success" else "warning")
+            if(state=="SENT") Label(if(item.n("expiresAt")<=s.time) "Registration link has expired." else "Registration link is valid for up to 15 minutes after sending.",12,Palette.Muted)
+        }
     }
 }
 @Composable private fun WorkspaceAccount(s:PortalState) {

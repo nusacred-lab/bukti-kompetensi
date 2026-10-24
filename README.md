@@ -63,3 +63,23 @@ policy decisions to real private fork services. See [P4 behavior, migrations and
 validation](docs/P4-credential-business.md). API contract, recovery isolation and
 strict dependency verification remain enforced. Final portal/APK journeys and
 public deployment retain their P5–P8 acceptance gates.
+
+## P7 custodian participant invitations
+
+The custodian portal separates Service overview (registry and wallet readiness),
+Recovery & access (recovery gates and uncertain operations), and Participant
+invitations (approved email, recipient confirmation and delivery request status).
+Participants register through a 15-minute email link, then use the Android wallet.
+Public self-registration remains disabled. Only a signed-in wallet administrator
+can list or request invitations. Browser writes require exact Origin and CSRF;
+durable recipient/request reservations prevent duplicate sends after retries or
+restart. An ambiguous outcome requires operator reconciliation.
+
+Deployment requires a newly verified application release and private
+`WALLET_INVITATION_DB_PATH` / `WALLET_INVITATION_CLIENT_SECRET_FILE` configuration;
+these features are disabled when no directory client is configured. The additive
+SQLite journal belongs in the existing private custodian volume and backup
+lifecycle. Existing wallet registry schema, signing keys and credentials are
+unchanged. The companion infrastructure repository documents dedicated client
+provisioning in `operations/README.md`. Source checks do not establish public
+rollout, browser rendering or SMTP inbox acceptance.
